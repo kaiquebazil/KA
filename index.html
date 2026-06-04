@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KA OS - Sistema de Gestão</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="icn.png" type="image/x-icon">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>KA <span>OS</span></h1>
+            </div>
+            <nav>
+                <button onclick="App.navigate('dashboard')" class="active">Dashboard</button>
+                <button onclick="App.navigate('clientes')">Clientes</button>
+                <button onclick="App.navigate('ordens')">Ordens de Serviço</button>
+                <button onclick="App.navigate('config')">Configurações/Backup</button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header>
+                <input type="text" id="global-search" placeholder="Buscar por cliente, OS, telefone ou equipamento..."
+                    onkeyup="App.search(this.value)">
+            </header>
+
+            <section id="view-dashboard" class="view active">
+                <h2>Dashboard</h2>
+                <div class="cards">
+                    <div class="card">
+                        <h3>Total de Clientes</h3>
+                        <p id="dash-clientes">0</p>
+                    </div>
+                    <div class="card">
+                        <h3>Ordens Abertas</h3>
+                        <p id="dash-abertas">0</p>
+                    </div>
+                    <div class="card">
+                        <h3>Ordens Finalizadas</h3>
+                        <p id="dash-finalizadas">0</p>
+                    </div>
+                    <div class="card highlight">
+                        <h3>Faturamento Total</h3>
+                        <p id="dash-faturamento">R$ 0,00</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-clientes" class="view">
+                <h2>Gerenciar Clientes</h2>
+                <form id="form-cliente" onsubmit="Clientes.save(event)">
+                    <input type="hidden" id="cli-id">
+                    <div class="form-group">
+                        <input type="text" id="cli-nome" placeholder="Nome Completo" required>
+                        <input type="tel" id="cli-telefone" placeholder="Telefone" required>
+                        <input type="text" id="cli-cpf" placeholder="CPF" maxlength="14">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="cli-cidade" placeholder="Cidade" required>
+                        <input type="text" id="cli-obs" placeholder="Observações">
+                    </div>
+                    <button type="submit" class="btn-primary">Salvar Cliente</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Telefone</th>
+                                <th>CPF</th>
+                                <th>Cidade</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-clientes"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="view-ordens" class="view">
+                <h2>Ordens de Serviço</h2>
+                <form id="form-os" onsubmit="Ordens.save(event)">
+                    <input type="hidden" id="os-id">
+                    <div class="form-group">
+                        <input type="text" id="os-cliente" placeholder="Nome do Cliente" required>
+                        <input type="tel" id="os-telefone" placeholder="Telefone" required>
+                        <input type="text" id="os-cpf" placeholder="CPF" maxlength="14">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="os-equipamento" placeholder="Equipamento (Ex: Celular)" required>
+                        <input type="text" id="os-marca" placeholder="Marca" required>
+                        <input type="text" id="os-modelo" placeholder="Modelo" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="os-defeito" placeholder="Defeito Relatado" required>
+                        <input type="text" id="os-servico" placeholder="Serviço Realizado">
+                    </div>
+                    <div class="form-group">
+                        <input type="number" id="os-valor" placeholder="Valor (R$)" step="0.01">
+                        <input type="date" id="os-entrada" required>
+                        <input type="date" id="os-entrega">
+                        <input type="text" id="os-garantia" placeholder="Garantia (Ex: 30 dias)">
+                    </div>
+                    <div class="form-group">
+                        <select id="os-status">
+                            <option value="Recebido">Recebido</option>
+                            <option value="Em análise">Em análise</option>
+                            <option value="Aguardando peça">Aguardando peça</option>
+                            <option value="Em manutenção">Em manutenção</option>
+                            <option value="Finalizado">Finalizado</option>
+                            <option value="Entregue">Entregue</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-primary">Salvar Ordem de Serviço</button>
+                </form>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>OS</th>
+                                <th>Cliente</th>
+                                <th>Equipamento</th>
+                                <th>Status</th>
+                                <th>Valor</th>
+                                <th>Ações / Documentos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-ordens"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="view-config" class="view">
+                <h2>Configurações e Backup</h2>
+                <div class="card">
+                    <h3>Exportar Dados</h3>
+                    <p>Baixe todos os dados do sistema em formato JSON.</p>
+                    <button onclick="StorageDB.exportar()" class="btn-primary">Exportar JSON</button>
+                </div>
+                <div class="card" style="margin-top: 20px;">
+                    <h3>Importar Dados</h3>
+                    <p>Restaure um backup anterior (Aviso: Isso substituirá os dados atuais).</p>
+                    <input type="file" id="file-import" accept=".json">
+                    <button onclick="StorageDB.importar()" class="btn-primary" style="margin-top: 10px;">Importar
+                        JSON</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="storage.js"></script>
+    <script src="pdf.js"></script>
+    <script src="dashboard.js"></script>
+    <script src="clientes.js"></script>
+    <script src="ordens.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
