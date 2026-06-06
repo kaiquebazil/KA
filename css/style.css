@@ -625,41 +625,199 @@ input, select, textarea { font-family: inherit; }
     .orcamento-layout { grid-template-columns: 1fr; }
     .orcamento-info { display: grid; grid-template-columns: 1fr 1fr; }
     .footer-content { grid-template-columns: 1fr 1fr; }
+    .services-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 768px) {
-    .top-bar .container { justify-content: center; gap: 12px; }
+    .top-bar .container { justify-content: center; gap: 12px; flex-wrap: wrap; }
     .top-bar span:nth-child(3) { display: none; }
+    .top-bar span { font-size: 11px; }
+    .header .container { gap: 8px; }
+    .logo img { height: 36px; }
     .menu-toggle { display: flex; }
     .search-container { display: none; }
+    .action-item { padding: 6px 8px; font-size: 16px; }
     .action-text { display: none; }
     .nav-menu { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background: var(--bg-card); border-right: 1px solid var(--border-color); z-index: 1000; transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1); padding: 20px 0; overflow-y: auto; box-shadow: 4px 0 30px rgba(0,0,0,0.5); }
     .nav-menu.active { left: 0; }
     .nav-menu ul { flex-direction: column; padding: 0; gap: 0; }
-    .nav-menu ul li a { padding: 14px 24px; border-bottom: 1px solid var(--border-color); border-left: 3px solid transparent; border-bottom-width: 1px; }
+    .nav-menu ul li a { padding: 14px 24px; border-bottom: 1px solid var(--border-color); border-left: 3px solid transparent; border-bottom-width: 1px; font-size: 13px; }
     .nav-menu ul li a.active, .nav-menu ul li a:hover { border-left-color: var(--primary-blue); }
     .close-menu { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: var(--bg-input); border-radius: 6px; color: var(--text-secondary); font-size: 16px; margin: 0 20px 20px auto; }
     .hero-carousel { height: 320px; }
-    .hero-slide { padding: 0 24px; }
+    .hero-slide { padding: 0 24px; gap: 24px; }
+    .hero-content { max-width: 100%; }
+    .hero-content h1 { font-size: clamp(20px, 3vw, 32px); }
+    .hero-content p { font-size: 14px; }
     .hero-visual { display: none; }
-    .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .carousel-btn { width: 36px; height: 36px; font-size: 14px; }
+    .carousel-prev { left: 12px; }
+    .carousel-next { right: 12px; }
+    .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .product-card { border-radius: 8px; }
+    .product-title { font-size: 12px; }
+    .price { font-size: 16px; }
     .cart-sidebar { width: 100%; right: -100%; }
+    .cart-header { padding: 16px; }
+    .cart-item { gap: 10px; }
+    .cart-item img { width: 60px; height: 60px; }
     .footer-content { grid-template-columns: 1fr; gap: 24px; }
+    .footer-logo img { width: 100px; }
+    .footer-links h4, .footer-contact h4 { font-size: 13px; }
+    .orcamento-layout { grid-template-columns: 1fr; gap: 20px; }
+    .orcamento-form-wrapper { padding: 20px; }
     .orcamento-info { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
-    .category-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+    .category-grid { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 10px; }
+    .category-card { padding: 14px 8px; }
+    .cat-img-placeholder { width: 40px; height: 40px; font-size: 18px; }
+    .category-card span { font-size: 11px; }
+    .services-grid { grid-template-columns: 1fr; }
+    .service-card { padding: 20px; }
+    .service-icon { width: 48px; height: 48px; font-size: 20px; }
+    .reviews-grid { grid-template-columns: 1fr; }
+    .products-header { flex-direction: column; align-items: flex-start; }
+    .products-header h2 { font-size: 18px; }
+    .modal-content { width: 95%; max-width: 100%; }
+}
+
+@media (max-width: 600px) {
+    .container { padding: 0 16px; }
+    .header .container { padding: 0 12px; }
+    .hero-carousel { height: 280px; }
+    .hero-content h1 { font-size: clamp(18px, 2.5vw, 26px); }
+    .hero-content p { font-size: 13px; margin-bottom: 20px; }
+    .hero-badge { font-size: 11px; padding: 3px 10px; }
+    .btn-primary { padding: 10px 18px; font-size: 12px; }
+    .product-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .product-card { border-radius: 6px; }
+    .product-category { font-size: 9px; padding: 10px 12px 2px; }
+    .product-title { font-size: 11px; padding: 0 12px 6px; }
+    .product-price { padding: 0 12px 4px; }
+    .price { font-size: 14px; }
+    .product-stock { font-size: 10px; padding: 0 12px 8px; }
+    .product-actions { padding: 0 12px 12px; gap: 4px; }
+    .btn-add-cart { font-size: 12px; padding: 8px 12px; }
+    .trust-grid { gap: 6px; flex-direction: column; }
+    .trust-item { font-size: 10px; padding: 3px 6px; }
+    .section-header h2 { font-size: 22px; }
+    .section-header-left h2 { font-size: 20px; }
+    .services-grid { grid-template-columns: 1fr; }
+    .service-card { padding: 16px; }
+    .service-icon { width: 40px; height: 40px; font-size: 18px; margin-bottom: 12px; }
+    .service-card h3 { font-size: 15px; }
+    .service-list li { font-size: 13px; }
+    .btn-service { font-size: 12px; padding: 8px 16px; }
+    .reviews-grid { grid-template-columns: 1fr; }
+    .page-header h1 { font-size: 22px; }
+    .page-header p { font-size: 13px; }
+    .form-group label { font-size: 12px; }
+    .form-group input, .form-group select, .form-group textarea { font-size: 13px; padding: 8px 12px; }
+    .form-section-title { font-size: 13px; }
+    .btn-confirm-order { font-size: 13px; padding: 12px; }
+    .info-card { padding: 16px; }
+    .info-card h3 { font-size: 13px; }
+    .info-card p, .info-card ul li { font-size: 12px; }
+    .modal-content { width: 95%; max-width: 100%; }
 }
 
 @media (max-width: 480px) {
-    .hero-carousel { height: 280px; }
-    .hero-content h1 { font-size: 22px; }
-    .hero-content p { font-size: 13px; }
-    .btn-primary { padding: 11px 20px; font-size: 13px; }
-    .product-grid { grid-template-columns: 1fr 1fr; }
-    .trust-grid { gap: 8px; }
-    .trust-item { font-size: 11px; padding: 4px 8px; }
-    .services-grid { grid-template-columns: 1fr; }
+    .container { padding: 0 14px; }
+    .header .container { padding: 0 10px; gap: 6px; }
+    .logo img { height: 32px; }
+    .menu-toggle { font-size: 20px; padding: 4px; }
+    .action-item { padding: 4px 6px; font-size: 14px; }
+    .cart-badge { width: 16px; height: 16px; font-size: 9px; top: -4px; right: -6px; }
+    .top-bar { height: 32px; font-size: 10px; }
+    .top-bar span i { font-size: 12px; }
+    .hero-carousel { height: 240px; }
+    .hero-content h1 { font-size: 18px; line-height: 1.1; margin-bottom: 10px; }
+    .hero-content p { font-size: 12px; margin-bottom: 16px; }
+    .hero-badge { font-size: 10px; padding: 2px 8px; margin-bottom: 12px; }
+    .btn-primary { padding: 9px 16px; font-size: 11px; gap: 4px; }
+    .carousel-btn { width: 32px; height: 32px; font-size: 12px; }
+    .carousel-prev { left: 8px; }
+    .carousel-next { right: 8px; }
+    .carousel-dots { bottom: 12px; gap: 6px; }
+    .dot { width: 6px; height: 6px; }
+    .dot.active { width: 20px; }
+    .product-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .product-card { border-radius: 6px; }
+    .product-img { aspect-ratio: 1; }
+    .product-category { font-size: 8px; padding: 8px 10px 2px; }
+    .product-title { font-size: 10px; padding: 0 10px 4px; line-height: 1.3; }
+    .product-price { font-size: 12px; padding: 0 10px 3px; }
+    .price { font-size: 13px; }
+    .price-original { font-size: 10px; }
+    .product-stock { font-size: 9px; padding: 0 10px 6px; }
+    .product-actions { padding: 0 10px 10px; gap: 3px; }
+    .btn-add-cart { font-size: 11px; padding: 6px 10px; }
+    .trust-grid { gap: 4px; flex-direction: column; }
+    .trust-item { font-size: 9px; padding: 2px 4px; }
+    .trust-item i { font-size: 14px; }
+    .section-header h2 { font-size: 20px; margin-bottom: 8px; }
+    .section-header p { font-size: 13px; }
+    .section-header-left h2 { font-size: 18px; padding: 30px 14px 16px; }
+    .services-section { padding: 16px 14px; }
+    .service-card { padding: 14px; }
+    .service-icon { width: 36px; height: 36px; font-size: 16px; margin-bottom: 10px; }
+    .service-card h3 { font-size: 14px; margin-bottom: 10px; }
+    .service-list li { font-size: 12px; padding: 3px 0; }
+    .btn-service { font-size: 11px; padding: 7px 14px; }
+    .category-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .category-card { padding: 12px 6px; }
+    .cat-img-placeholder { width: 36px; height: 36px; font-size: 16px; margin-bottom: 6px; }
+    .category-card span { font-size: 10px; }
     .reviews-grid { grid-template-columns: 1fr; }
+    .page-main { padding: 24px 0 40px; }
+    .page-header h1 { font-size: 20px; margin-bottom: 8px; }
+    .page-header p { font-size: 12px; }
+    .orcamento-layout { gap: 16px; }
+    .orcamento-form-wrapper { padding: 16px; border-radius: 8px; }
+    .form-section-title { font-size: 12px; margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { font-size: 11px; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea { font-size: 12px; padding: 7px 10px; border-radius: 6px; }
+    .form-row { gap: 10px; }
+    .btn-confirm-order { font-size: 12px; padding: 10px; border-radius: 8px; }
+    .info-card { padding: 14px; border-radius: 8px; }
+    .info-card h3 { font-size: 12px; margin-bottom: 10px; }
+    .info-card p { font-size: 11px; margin-bottom: 3px; }
+    .info-card ul li { font-size: 11px; padding: 3px 0; }
+    .btn-whatsapp-direct { font-size: 12px; padding: 10px; }
+    .cart-sidebar { width: 100%; }
+    .cart-header { padding: 14px; }
+    .cart-header h3 { font-size: 14px; }
+    .cart-items { padding: 12px; gap: 10px; }
+    .cart-item { padding: 10px; gap: 8px; }
+    .cart-item img { width: 56px; height: 56px; }
+    .cart-item-info h5 { font-size: 12px; }
+    .cart-item-info p { font-size: 13px; }
+    .quantity-controls button { width: 24px; height: 24px; font-size: 14px; }
+    .quantity-controls span { font-size: 12px; }
+    .cart-footer { padding: 12px; gap: 8px; }
+    .cart-total { font-size: 12px; }
+    .cart-total-final { font-size: 14px; }
+    .btn-checkout { font-size: 12px; padding: 12px; }
+    .modal-content { width: 95%; max-width: 100%; max-height: 85vh; }
+    .modal-header { padding: 16px; }
+    .modal-header h3 { font-size: 14px; }
+    .footer { padding: 24px 0; }
+    .footer-content { gap: 16px; }
+    .footer-logo img { width: 80px; }
+    .footer-logo p { font-size: 12px; }
+    .footer-links h4, .footer-contact h4 { font-size: 12px; margin-bottom: 8px; }
+    .footer-links ul li, .footer-contact p { font-size: 11px; }
+    .btn-whatsapp-footer { font-size: 11px; padding: 10px; }
+    .footer-bottom { font-size: 10px; padding: 16px 0; }
+    .fab-whatsapp { width: 52px; height: 52px; font-size: 24px; bottom: 20px; right: 20px; }
+    .toast-notification { bottom: 80px; right: 20px; max-width: 280px; font-size: 12px; padding: 12px 16px; }
+    .btn-secondary { padding: 7px 14px; font-size: 12px; }
+    .products-section { padding: 16px; }
+    .products-header { margin-bottom: 16px; }
+    .products-header h2 { font-size: 16px; }
+    .products-filter select { font-size: 12px; padding: 6px 10px; }
+    .btn-load-more { font-size: 12px; padding: 10px 20px; }
 }
 
 /* ── Admin Modal Extras ─────────────────────────────────────── */
