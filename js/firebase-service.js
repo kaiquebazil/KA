@@ -19,7 +19,8 @@
         officialNotes: { collection: 'notasOficiais', localKey: 'kaos_official_notes' },
         settings: { collection: 'configuracoes', localKey: 'kaos_settings', docId: 'kos' },
         shipping: { collection: 'configuracoes', localKey: 'katech_shipping', docId: 'frete' },
-        orders: { collection: 'pedidos', localKey: 'katech_orders' }
+        orders: { collection: 'pedidos', localKey: 'katech_orders' },
+        deliveries: { collection: 'entregas', localKey: 'kaos_deliveries' }
     };
 
     function hasConfig() {
@@ -178,7 +179,8 @@
             officialNotes: data.officialNotes,
             settings: data.settings,
             shipping: data.shipping,
-            orders: data.orders
+            orders: data.orders,
+            deliveries: data.deliveries || data.entregas
         };
         var keys = Object.keys(pairs);
         for (var i = 0; i < keys.length; i++) {

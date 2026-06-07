@@ -360,7 +360,8 @@
     flex-wrap: wrap;
     margin-bottom: 20px;
 }
-.admin-search-bar input {
+.admin-search-bar input,
+.admin-search-bar select {
     flex: 1;
     min-width: 200px;
     background-color: var(--bg-panel);
@@ -372,7 +373,8 @@
     font-size: 14px;
     transition: border-color var(--transition);
 }
-.admin-search-bar input:focus { border-color: var(--primary-blue); }
+.admin-search-bar input:focus,
+.admin-search-bar select:focus { border-color: var(--primary-blue); }
 .btn-danger-outline {
     background-color: transparent;
     border: 1px solid rgba(229, 46, 46, 0.4);
@@ -586,6 +588,36 @@
     color: var(--text-primary);
     padding: 0 10px;
 }
+.delivery-address {
+    max-width: 260px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+.delivery-status-select {
+    min-width: 170px;
+    min-height: 34px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+    padding: 0 10px;
+}
+.status-pedidorecebido,
+.status-pagamentoconfirmado,
+.status-separandoproduto,
+.status-saiuparaentrega,
+.status-chegandoperto,
+.status-entregue,
+.status-cancelado {
+    color: white;
+}
+.status-pedidorecebido { background: #3b82f6; }
+.status-pagamentoconfirmado { background: #25d366; }
+.status-separandoproduto { background: #f5a623; color: #111; }
+.status-saiuparaentrega { background: #8b5cf6; }
+.status-chegandoperto { background: #06b6d4; }
+.status-entregue { background: #16a34a; }
+.status-cancelado { background: var(--red-danger); }
 .empty-state {
     text-align: center;
     padding: 60px 20px;

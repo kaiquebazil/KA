@@ -93,6 +93,9 @@
                 <button class="admin-nav-btn" data-tab="orders">
                     <i class="fas fa-shopping-bag"></i> Pedidos Site
                 </button>
+                <button class="admin-nav-btn" data-tab="deliveries">
+                    <i class="fas fa-route"></i> Entregas
+                </button>
                 <button class="admin-nav-btn" data-tab="kaos">
                     <i class="fas fa-receipt"></i> NF Rápida
                 </button>
@@ -266,6 +269,41 @@
                     <p class="empty-state"><i class="fas fa-inbox"></i> Nenhum pedido registrado ainda.</p>
                 </div>
                         </div>
+
+            <!-- Tab: Clientes -->
+            <!-- Tab: Entregas -->
+            <div id="tab-deliveries" class="admin-tab" style="display:none;">
+                <div class="admin-tab-header">
+                    <h1><i class="fas fa-route"></i> Entregas</h1>
+                    <button id="btn-add-delivery" class="btn-primary">
+                        <i class="fas fa-plus"></i> Nova Entrega
+                    </button>
+                </div>
+                <div class="admin-search-bar">
+                    <input type="text" id="delivery-search" placeholder="Buscar por cliente, telefone, pedido ou bairro...">
+                    <select id="delivery-status-filter">
+                        <option value="">Todos os status</option>
+                    </select>
+                </div>
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Pedido</th>
+                                <th>Cliente</th>
+                                <th>Endereco</th>
+                                <th>Status</th>
+                                <th>Previsao</th>
+                                <th>Entregador</th>
+                                <th>Taxa</th>
+                                <th>Total</th>
+                                <th>Acoes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deliveries-list"></tbody>
+                    </table>
+                </div>
+            </div>
 
             <!-- Tab: Clientes -->
             <div id="tab-customers" class="admin-tab">
@@ -910,6 +948,97 @@
                 <div class="modal-footer">
                     <button type="button" id="cancel-bairro-modal" class="btn-secondary">Cancelar</button>
                     <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Entrega -->
+    <div id="delivery-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="delivery-modal-title">Nova Entrega</h3>
+                <button id="close-delivery-modal" class="btn-close"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="delivery-form">
+                <input type="hidden" id="delivery-id">
+                <input type="hidden" id="delivery-pedido-id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Pedido vinculado</label>
+                            <select id="delivery-order-select">
+                                <option value="">Entrega manual</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Numero do pedido</label>
+                            <input type="text" id="delivery-numero-pedido" placeholder="Ex: 1024">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cliente *</label>
+                            <input type="text" id="delivery-cliente" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="text" id="delivery-telefone">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group form-group-lg">
+                            <label>Endereco</label>
+                            <input type="text" id="delivery-endereco">
+                        </div>
+                        <div class="form-group">
+                            <label>Bairro</label>
+                            <input type="text" id="delivery-bairro">
+                        </div>
+                        <div class="form-group">
+                            <label>Cidade</label>
+                            <input type="text" id="delivery-cidade" value="Petropolis">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Taxa de entrega (R$)</label>
+                            <input type="number" id="delivery-taxa" step="0.01" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor do pedido (R$)</label>
+                            <input type="number" id="delivery-valor-pedido" step="0.01" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor total (R$)</label>
+                            <input type="number" id="delivery-valor-total" step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="delivery-status"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Previsao de entrega</label>
+                            <input type="text" id="delivery-previsao" placeholder="Hoje ate 18h">
+                        </div>
+                        <div class="form-group">
+                            <label>Entregador</label>
+                            <input type="text" id="delivery-entregador">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Observacoes</label>
+                        <textarea id="delivery-observacoes" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="delivery-whatsapp" class="btn-secondary-outline">
+                        <i class="fab fa-whatsapp"></i> Avisar cliente no WhatsApp
+                    </button>
+                    <button type="button" id="cancel-delivery-modal" class="btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Entrega</button>
                 </div>
             </form>
         </div>

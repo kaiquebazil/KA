@@ -153,6 +153,7 @@ function initAdminPanel() {
     renderMeiControl();
     renderAdminShipping();
     renderAdminOrders();
+    renderDeliveries();
     renderReports();
     
     initProductModal();
@@ -162,6 +163,7 @@ function initAdminPanel() {
     ensureFinanceModalFields();
     initFinanceModal();
     initShippingModal();
+    initDeliveryModule();
     initKaosSystem();
     initBackupSystem();
     initResetCatalog();
@@ -189,6 +191,15 @@ function initAdminPanel() {
         guaranteeSearch.addEventListener('input', function(e) {
             renderGuarantees(e.target.value);
         });
+    }
+
+    var deliverySearch = document.getElementById('delivery-search');
+    if (deliverySearch) {
+        deliverySearch.addEventListener('input', renderDeliveries);
+    }
+    var deliveryStatusFilter = document.getElementById('delivery-status-filter');
+    if (deliveryStatusFilter) {
+        deliveryStatusFilter.addEventListener('change', renderDeliveries);
     }
 }
 
@@ -241,6 +252,7 @@ function initAdminTabs() {
             if (tabId === 'documents') renderDocuments();
             if (tabId === 'shipping') renderAdminShipping();
             if (tabId === 'orders') loadOrdersFromFirebase().then(renderAdminOrders);
+            if (tabId === 'deliveries') loadDeliveriesFromFirebase().then(renderDeliveries);
             
             if (window.innerWidth <= 768) {
                 document.body.classList.remove('sidebar-mobile-open');

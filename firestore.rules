@@ -28,6 +28,10 @@ service cloud.firestore {
       allow read, update, delete: if signedIn();
     }
 
+    match /entregas/{docId} {
+      allow read, write: if signedIn();
+    }
+
     match /financeiro/{docId} {
       allow read, write: if signedIn();
     }
