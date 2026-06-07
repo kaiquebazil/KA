@@ -28,8 +28,11 @@ var categoryIcons = {
     'Drones': 'fa-paper-plane', 'Baterias': 'fa-battery-full'
 };
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     initCarousel();
+    if (typeof loadPublicProductsFromFirebase === 'function') {
+        await loadPublicProductsFromFirebase();
+    }
     renderCategories();
     renderProducts();
     renderReviews();
@@ -81,7 +84,7 @@ function renderCategories() {
     var grid = document.getElementById('category-grid');
     if (!grid) return;
 
-    var products = getProducts();
+    var products = typeof getPublicProducts === 'function' ? getPublicProducts() : getProducts();
     var cats = [];
     products.forEach(function(p) {
         if (cats.indexOf(p.categoria) === -1) cats.push(p.categoria);
@@ -116,7 +119,7 @@ function renderProducts() {
     var grid = document.getElementById('product-grid');
     if (!grid) return;
 
-    var products = getProducts();
+    var products = typeof getPublicProducts === 'function' ? getPublicProducts() : getProducts();
 
     if (currentSearch) {
         var q = currentSearch.toLowerCase();
@@ -184,11 +187,11 @@ function createProductCard(p) {
     var card = document.createElement('div');
     card.className = 'product-card';
 
-    var precoFinal = p.preco;
+    var precoFinal = p.precoVenda || p.preco;
     var precoOriginal = '';
     if (p.desconto > 0) {
-        precoFinal = p.preco * (1 - p.desconto / 100);
-        precoOriginal = '<span class="price-original">R$ ' + p.preco.toFixed(2).replace('.', ',') + '</span>';
+        precoFinal = (p.precoVenda || p.preco) * (1 - p.desconto / 100);
+        precoOriginal = '<span class="price-original">R$ ' + (p.precoVenda || p.preco).toFixed(2).replace('.', ',') + '</span>';
     }
 
     var tags = '';

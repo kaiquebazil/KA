@@ -294,7 +294,7 @@ function sendOrderWhatsApp(e) {
     msg += '━━━━━━━━━━━━━━━━━━\n';
     msg += 'Aguardo confirmação! 😊';
 
-    saveOrder({ nome: nome, telefone: telefone, cidade: cidade, bairro: bairro, cart: cart, subtotal: subtotal, frete: frete, total: total, data: new Date().toISOString() });
+    saveOrder({ nome: nome, clienteNome: nome, telefone: telefone, cidade: cidade, bairro: bairro, cart: cart, itens: cart, subtotal: subtotal, frete: frete, total: total, status: 'Novo', origem: 'Site', data: new Date().toISOString(), dataPedido: new Date().toISOString() });
 
     var url = 'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + encodeURIComponent(msg);
     window.open(url, '_blank');
@@ -308,9 +308,23 @@ function sendOrderWhatsApp(e) {
 // ── Salvar pedido no histórico ────────────────────────────────
 function saveOrder(order) {
     var orders = JSON.parse(localStorage.getItem(ORDERS_KEY)) || [];
+    order.id = order.id || Date.now();
+    order.status = order.status || 'Novo';
+    order.origem = order.origem || 'Site';
+    order.itens = order.itens || order.cart || [];
+    order.dataPedido = order.dataPedido || order.data || new Date().toISOString();
     orders.unshift(order);
     if (orders.length > 50) orders.pop();
     localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    if (window.KOSData) window.KOSData.saveCollection('orders', orders);
+    else if (window.firebase && window.KOS_FIREBASE_CONFIG) {
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(window.KOS_FIREBASE_CONFIG);
+            firebase.firestore().collection('pedidos').doc(String(order.id)).set(order, { merge: true });
+        } catch (err) {
+            console.warn('Pedido mantido localmente. Firebase indisponivel.', err);
+        }
+    }
 }
 
 // ── Toast Notification ────────────────────────────────────────

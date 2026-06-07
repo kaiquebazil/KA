@@ -1,0 +1,51 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /clientes/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /ordensServico/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /garantias/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /produtos/{docId} {
+      allow read: if signedIn() || resource.data.ativo == true;
+      allow write: if signedIn();
+    }
+
+    match /pedidos/{docId} {
+      allow create: if true;
+      allow read, update, delete: if signedIn();
+    }
+
+    match /financeiro/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /documentos/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /notasOficiais/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /orcamentos/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /configuracoes/{docId} {
+      allow read, write: if signedIn();
+    }
+  }
+}

@@ -20,8 +20,12 @@
                 <img src="img/logo-transparente.png" width="150" alt="KB Tech">
             </div>
             <h2>Painel Administrativo</h2>
-            <p>Digite a senha para acessar</p>
+            <p>Entre com o usuario autorizado no Firebase</p>
             <form id="login-form" novalidate>
+                <div class="form-group">
+                    <label for="admin-email">E-mail</label>
+                    <input type="email" id="admin-email" placeholder="admin@kbtech.com" autocomplete="username">
+                </div>
                 <div class="form-group">
                     <label for="admin-password">Senha</label>
                     <div class="password-input-wrapper">
@@ -32,18 +36,22 @@
                     </div>
                 </div>
                 <div id="login-error" class="login-error" style="display:none;">
-                    <i class="fas fa-exclamation-circle"></i> Senha incorreta. Tente novamente.
+                    <i class="fas fa-exclamation-circle"></i> Login invalido ou Firebase nao configurado.
                 </div>
                 <button type="submit" class="btn-primary btn-login">
                     <i class="fas fa-lock-open"></i> Entrar
                 </button>
             </form>
-            <a href="index.html" class="back-to-store"><i class="fas fa-arrow-left"></i> Voltar à loja</a>
+            <small class="admin-info-text">Acesso restrito ao painel administrativo KB Tech.</small>
         </div>
     </div>
 
     <!-- Painel Principal (oculto até login) -->
     <div id="admin-panel" class="admin-panel" style="display:none;">
+        <button id="admin-menu-toggle" class="admin-mobile-menu-btn" type="button" aria-label="Abrir menu">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </button>
 
         <!-- Sidebar Admin -->
         <aside class="admin-sidebar">
@@ -73,6 +81,9 @@
                 <button class="admin-nav-btn" data-tab="finance">
                     <i class="fas fa-wallet"></i> Financeiro
                 </button>
+                <button class="admin-nav-btn" data-tab="reports">
+                    <i class="fas fa-chart-pie"></i> Relatorios
+                </button>
                 <button class="admin-nav-btn" data-tab="partners">
                     <i class="fas fa-handshake"></i> Sócios
                 </button>
@@ -93,7 +104,7 @@
                 </button>
             </nav>
             <div class="admin-sidebar-footer">
-                <a href="index.html" class="admin-back-btn"><i class="fas fa-store"></i> Ver Loja</a>
+                <span id="firebase-status" class="admin-back-btn"><i class="fas fa-database"></i> Local</span>
                 <button id="btn-logout" class="admin-logout-btn"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </aside>
@@ -123,6 +134,14 @@
                     <div class="stat-card">
                         <span class="stat-number" id="dash-estoque-baixo">0</span>
                         <span class="stat-label">Estoque Baixo</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="dash-investido">R$ 0,00</span>
+                        <span class="stat-label">Total Investido</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="dash-ticket-medio">R$ 0,00</span>
+                        <span class="stat-label">Ticket Medio</span>
                     </div>
                 </div>
 
@@ -752,7 +771,15 @@
                         <label for="prod-imagem">URL da Imagem</label>
                         <input type="text" id="prod-imagem" placeholder="produtos/categoria/nome_arquivo.jpg ou URL externa">
                     </div>
+                    <div class="form-group">
+                        <label for="prod-descricao">Descrição</label>
+                        <textarea id="prod-descricao" rows="3" placeholder="Descrição interna ou pública do produto"></textarea>
+                    </div>
                     <div class="form-row form-flags">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="prod-ativo" checked>
+                            <span>Ativo no site</span>
+                        </label>
                         <label class="checkbox-label">
                             <input type="checkbox" id="prod-destaque">
                             <span>Destaque</span>
@@ -891,7 +918,14 @@
     <!-- Overlay -->
     <div id="overlay" class="overlay"></div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-auth.js"></script>
+    <script src="js/firebase-service.js"></script>
     <script src="js/products.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>
+

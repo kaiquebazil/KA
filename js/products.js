@@ -5,6 +5,7 @@
 
 const PRODUCTS_KEY = 'katech_products';
 const SHIPPING_KEY = 'katech_shipping';
+var publicProductsLoadedFromFirebase = false;
 
 // ── Catálogo inicial ──────────────────────────────────────────
 const initialProducts = [
@@ -1550,21 +1551,101 @@ const initialShipping = [
 // ── Funções de Produtos ───────────────────────────────────────
 function initProducts() {
     if (!localStorage.getItem(PRODUCTS_KEY)) {
-        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(initialProducts));
+        localStorage.setItem(PRODUCTS_KEY, JSON.stringify(normalizeProducts(initialProducts)));
     }
 }
 
 function getProducts() {
     initProducts();
-    return JSON.parse(localStorage.getItem(PRODUCTS_KEY)) || [];
+    return normalizeProducts(JSON.parse(localStorage.getItem(PRODUCTS_KEY)) || []);
 }
 
 function saveProducts(products) {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+    var normalized = normalizeProducts(products);
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(normalized));
+    if (window.KOSData) window.KOSData.saveCollection('products', normalized);
 }
 
 function resetProducts() {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(initialProducts));
+    var normalized = normalizeProducts(initialProducts);
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(normalized));
+    if (window.KOSData) window.KOSData.saveCollection('products', normalized);
+}
+
+function normalizeProduct(p) {
+    p = p || {};
+    var precoVenda = parseFloat(p.precoVenda !== undefined ? p.precoVenda : p.preco) || 0;
+    var precoCusto = parseFloat(p.precoCusto !== undefined ? p.precoCusto : p.custo) || 0;
+    var estoqueMinimo = parseInt(p.estoqueMinimo !== undefined ? p.estoqueMinimo : p.estoqueMin) || 5;
+    var created = p.criadoEm || p.createdAt || new Date().toISOString();
+    return Object.assign({}, p, {
+        id: p.id || Date.now(),
+        nome: p.nome || '',
+        categoria: p.categoria || 'Outro',
+        descricao: p.descricao || '',
+        precoCusto: precoCusto,
+        precoVenda: precoVenda,
+        preco: precoVenda,
+        custo: precoCusto,
+        estoque: parseInt(p.estoque) || 0,
+        estoqueMinimo: estoqueMinimo,
+        estoqueMin: estoqueMinimo,
+        imagem: p.imagem || 'https://placehold.co/400',
+        fornecedor: p.fornecedor || '',
+        ativo: p.ativo !== false,
+        destaque: !!p.destaque,
+        maisVendido: !!p.maisVendido,
+        oferta: !!p.oferta,
+        desconto: parseInt(p.desconto) || 0,
+        criadoEm: created,
+        atualizadoEm: p.atualizadoEm || p.updatedAt || created
+    });
+}
+
+function normalizeProducts(products) {
+    return (products || []).map(normalizeProduct);
+}
+
+function getPublicProducts() {
+    return getProducts()
+        .filter(function(p) { return p.ativo !== false; })
+        .map(function(p) {
+            return {
+                id: p.id,
+                nome: p.nome,
+                categoria: p.categoria,
+                descricao: p.descricao || '',
+                preco: p.precoVenda,
+                precoVenda: p.precoVenda,
+                estoque: p.estoque,
+                estoqueMinimo: p.estoqueMinimo,
+                imagem: p.imagem,
+                ativo: p.ativo,
+                destaque: p.destaque,
+                maisVendido: p.maisVendido,
+                oferta: p.oferta,
+                desconto: p.desconto || 0
+            };
+        });
+}
+
+async function loadPublicProductsFromFirebase() {
+    if (!window.firebase || !window.KOS_FIREBASE_CONFIG) return getPublicProducts();
+    try {
+        if (!firebase.apps.length) firebase.initializeApp(window.KOS_FIREBASE_CONFIG);
+        var snapshot = await firebase.firestore().collection('produtos').where('ativo', '==', true).get();
+        var products = [];
+        snapshot.forEach(function(doc) {
+            products.push(normalizeProduct(Object.assign({ id: doc.id }, doc.data())));
+        });
+        if (products.length) {
+            localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+            publicProductsLoadedFromFirebase = true;
+        }
+    } catch (err) {
+        console.warn('Produtos Firebase indisponiveis. Usando fallback local.', err);
+    }
+    return getPublicProducts();
 }
 
 // ── Funções de Frete ──────────────────────────────────────────
@@ -1581,6 +1662,7 @@ function getShipping() {
 
 function saveShipping(data) {
     localStorage.setItem(SHIPPING_KEY, JSON.stringify(data));
+    if (window.KOSData) window.KOSData.saveCollection('shipping', data);
 }
 
 function getFreteByBairro(bairro) {
