@@ -3,9 +3,9 @@
    Carrinho de compras, frete por bairro e envio via WhatsApp
    ============================================================ */
 
-const CART_KEY = 'katech_cart';
-const ORDERS_KEY = 'katech_orders';
-const WHATSAPP_NUMBER = '5524992046467'; // Número da KB Tech
+var CART_KEY = 'katech_cart';
+var ORDERS_KEY = 'katech_orders';
+var WHATSAPP_NUMBER = '5524992046467'; // Número da KB Tech
 
 // ── Funções do Carrinho ───────────────────────────────────────
 function getCart() {
@@ -308,11 +308,19 @@ function sendOrderWhatsApp(e) {
 // ── Salvar pedido no histórico ────────────────────────────────
 function saveOrder(order) {
     var orders = JSON.parse(localStorage.getItem(ORDERS_KEY)) || [];
+    var now = new Date().toISOString();
     order.id = order.id || Date.now();
+    order.numeroPedido = order.numeroPedido || String(order.id).slice(-6);
+    order.pedidoNumero = order.pedidoNumero || order.numeroPedido;
+    order.clienteNome = order.clienteNome || order.nome || '';
+    order.endereco = order.endereco || '';
+    order.formaPagamento = order.formaPagamento || 'A combinar';
     order.status = order.status || 'Novo';
     order.origem = order.origem || 'Site';
     order.itens = order.itens || order.cart || [];
-    order.dataPedido = order.dataPedido || order.data || new Date().toISOString();
+    order.criadoEm = order.criadoEm || order.dataPedido || order.data || now;
+    order.atualizadoEm = now;
+    order.dataPedido = order.dataPedido || order.criadoEm;
     orders.unshift(order);
     if (orders.length > 50) orders.pop();
     localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));

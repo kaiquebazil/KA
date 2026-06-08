@@ -6,6 +6,37 @@
 var ADMIN_PASSWORD = 'katech2024';
 var ADMIN_SESSION_KEY = 'katech_admin_session';
 
+function setLoginFeedback(message, isError) {
+    var errEl = document.getElementById('login-error');
+    if (!errEl) return;
+    errEl.style.display = message ? 'flex' : 'none';
+    errEl.innerHTML = '<i class="fas fa-' + (isError ? 'exclamation-circle' : 'info-circle') + '"></i> ' + message;
+}
+
+function setLoginLoading(isLoading) {
+    var btn = document.querySelector('#login-form .btn-login');
+    if (!btn) return;
+    btn.disabled = !!isLoading;
+    btn.innerHTML = isLoading
+        ? '<i class="fas fa-spinner fa-spin"></i> Entrando...'
+        : '<i class="fas fa-lock-open"></i> Entrar';
+}
+
+function withTimeout(promise, timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        var timer = setTimeout(function() {
+            reject(new Error('Tempo limite do Firebase atingido'));
+        }, timeoutMs);
+        promise.then(function(value) {
+            clearTimeout(timer);
+            resolve(value);
+        }).catch(function(error) {
+            clearTimeout(timer);
+            reject(error);
+        });
+    });
+}
+
 // Autenticacao
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin JS carregado');
@@ -32,27 +63,55 @@ document.addEventListener('DOMContentLoaded', function() {
     if (loginForm) {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
+            setLoginFeedback('', false);
+            setLoginLoading(true);
             var emailEl = document.getElementById('admin-email');
             var email = emailEl ? emailEl.value.trim() : '';
             var pwd = document.getElementById('admin-password').value;
+
+            if (pwd === ADMIN_PASSWORD) {
+                sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+                setLoginLoading(false);
+                showAdminPanel();
+                if (window.KOSData && window.KOSData.isOnline()) {
+                    window.KOSData.syncAllToLocal().then(function() {
+                        updateFirebaseStatus();
+                        renderDashboard();
+                        renderAdminProducts();
+                        renderAdminOrders();
+                    }).catch(function(err) {
+                        console.warn('Sincronizacao Firebase em segundo plano falhou.', err);
+                    });
+                }
+                return;
+            }
+
             if (window.KOSAuth && window.KOSAuth.isReady && window.KOSAuth.isReady()) {
                 try {
-                    await window.KOSAuth.login(email, pwd);
-                    await syncFirebaseThenShow();
+                    await withTimeout(window.KOSAuth.login(email, pwd), 8000);
+                    sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+                    setLoginLoading(false);
+                    showAdminPanel();
+                    if (window.KOSData && window.KOSData.isOnline()) {
+                        window.KOSData.syncAllToLocal().then(function() {
+                            updateFirebaseStatus();
+                            renderDashboard();
+                            renderAdminProducts();
+                            renderAdminOrders();
+                        }).catch(function(err) {
+                            console.warn('Sincronizacao Firebase em segundo plano falhou.', err);
+                        });
+                    }
                     return;
                 } catch (err) {
                     console.warn('Firebase Auth falhou. Tentando login local temporario.', err);
                 }
             }
-            if (pwd === ADMIN_PASSWORD) {
-                sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
-                showAdminPanel();
-            } else {
-                var errEl = document.getElementById('login-error');
-                if (errEl) errEl.style.display = 'flex';
-                document.getElementById('admin-password').value = '';
-                document.getElementById('admin-password').focus();
-            }
+
+            setLoginLoading(false);
+            setLoginFeedback('Login invalido. Use a senha local do painel ou um usuario autorizado do Firebase.', true);
+            document.getElementById('admin-password').value = '';
+            document.getElementById('admin-password').focus();
         });
     }
 
@@ -103,11 +162,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function syncFirebaseThenShow() {
-    if (window.KOSData && window.KOSData.isOnline()) {
-        await window.KOSData.syncAllToLocal();
-    }
     updateFirebaseStatus();
     showAdminPanel();
+    if (window.KOSData && window.KOSData.isOnline()) {
+        window.KOSData.syncAllToLocal().then(function() {
+            updateFirebaseStatus();
+            renderDashboard();
+            renderAdminProducts();
+            renderAdminOrders();
+        }).catch(function(err) {
+            console.warn('Sincronizacao Firebase em segundo plano falhou.', err);
+        });
+    }
 }
 
 function updateFirebaseStatus() {
@@ -1055,7 +1121,7 @@ window.deleteProduct = function(id) {
 
 var SUPPLIERS_KEY = 'kaos_suppliers';
 var SUPPLIER_PURCHASES_KEY = 'kaos_supplier_purchases';
-var KOS_DROPSHIP_MODE = true;
+var KOS_DROPSHIP_MODE = false;
 var SUPPLIER_PURCHASE_STATUS = ['Orçamento solicitado', 'Pedido enviado', 'Aguardando pagamento', 'Aguardando entrega', 'Recebido', 'Cancelado'];
 var KOS_PRODUCT_CATEGORIES = ['Controles Remotos', 'Carregadores', 'Cabos', 'Adaptadores', 'Acessorios para TV', 'Acessorios para Celular', 'Perifericos', 'Mouse', 'Teclado', 'Headset', 'Informatica', 'Audio', 'TV e Streaming', 'Redes', 'Outro'];
 var KOS_DEFAULT_SUPPLIER = {
@@ -2100,6 +2166,37 @@ window.registerOfficialNoteFromOrder = function(orderId) {
     });
 };
 
+function getStockMovements() {
+    try {
+        return JSON.parse(localStorage.getItem('kaos_stock_movements') || '[]');
+    } catch (err) {
+        return [];
+    }
+}
+
+function saveStockMovements(data) {
+    localStorage.setItem('kaos_stock_movements', JSON.stringify(data || []));
+    if (window.KOSData) window.KOSData.saveCollection('stockMovements', data || []);
+}
+
+function registerStockMovement(product, quantity, previousStock, nextStock, reason, referenceType, referenceId) {
+    var movements = getStockMovements();
+    movements.unshift({
+        id: Date.now() + '-' + Math.random().toString(16).slice(2),
+        produtoId: product.id,
+        produtoNome: product.nome,
+        tipo: 'Venda',
+        quantidade: quantity,
+        estoqueAnterior: previousStock,
+        estoqueNovo: nextStock,
+        motivo: reason || 'Baixa manual por pedido pago/entregue',
+        referenciaTipo: referenceType || 'pedido',
+        referenciaId: referenceId || '',
+        criadoEm: new Date().toISOString()
+    });
+    saveStockMovements(movements);
+}
+
 window.manualStockOutOrder = function(orderId) {
     if (KOS_DROPSHIP_MODE) {
         showAdminToast('Modo dropship ativo: nao ha estoque fisico para baixar.', 'info');
@@ -2117,8 +2214,11 @@ window.manualStockOutOrder = function(orderId) {
     (order.itens || []).forEach(function(item) {
         for (var i = 0; i < products.length; i++) {
             if (String(products[i].id) === String(item.id)) {
-                products[i].estoque = Math.max(0, (parseInt(products[i].estoque) || 0) - (parseInt(item.qty || item.quantidade) || 1));
+                var quantity = parseInt(item.qty || item.quantidade) || 1;
+                var previousStock = parseInt(products[i].estoque) || 0;
+                products[i].estoque = Math.max(0, previousStock - quantity);
                 products[i].atualizadoEm = new Date().toISOString();
+                registerStockMovement(products[i], quantity, previousStock, products[i].estoque, 'Venda confirmada no KOS', 'pedido', order.id);
                 if ((parseInt(products[i].estoque) || 0) <= (parseInt(products[i].estoqueMinimo || products[i].estoqueMin) || 1)) {
                     restockNeeded.push(products[i]);
                 }
@@ -3609,4 +3709,3 @@ function renderDashboard() {
         alerts.innerHTML = html;
     }
 }
-

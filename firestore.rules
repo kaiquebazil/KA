@@ -11,11 +11,13 @@ service cloud.firestore {
     }
 
     match /ordensServico/{docId} {
-      allow read, write: if signedIn();
+      allow read: if true;
+      allow write: if signedIn();
     }
 
     match /garantias/{docId} {
-      allow read, write: if signedIn();
+      allow read: if true;
+      allow write: if signedIn();
     }
 
     match /produtos/{docId} {
@@ -33,10 +35,16 @@ service cloud.firestore {
 
     match /pedidos/{docId} {
       allow create: if true;
-      allow read, update, delete: if signedIn();
+      allow read: if true;
+      allow update, delete: if signedIn();
     }
 
     match /entregas/{docId} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /movimentacoesEstoque/{docId} {
       allow read, write: if signedIn();
     }
 

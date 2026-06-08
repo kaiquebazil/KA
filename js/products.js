@@ -3,17 +3,17 @@
    Gerenciamento do catálogo de produtos via localStorage
    ============================================================ */
 
-const PRODUCTS_KEY = 'katech_products';
-const SHIPPING_KEY = 'katech_shipping';
-const STOCK_RANDOMIZED_KEY = 'katech_stock_randomized_v1';
-const KOS_DROPSHIP_MODE = true;
-const TECNOCELL_SUPPLIER_ID = 'tecnocell';
-const TECNOCELL_SUPPLIER_NAME = 'Tecnocell';
-const TECNOCELL_SUPPLIER_PHONE = '(24) 99826-6051';
+var PRODUCTS_KEY = 'katech_products';
+var SHIPPING_KEY = 'katech_shipping';
+var STOCK_RANDOMIZED_KEY = 'katech_stock_randomized_v1';
+var KOS_DROPSHIP_MODE = false;
+var TECNOCELL_SUPPLIER_ID = 'tecnocell';
+var TECNOCELL_SUPPLIER_NAME = 'Tecnocell';
+var TECNOCELL_SUPPLIER_PHONE = '(24) 99826-6051';
 var publicProductsLoadedFromFirebase = false;
 
 // ── Catálogo inicial ──────────────────────────────────────────
-const initialProducts = [
+var initialProducts = [
   {
     "id": 100,
     "nome": "ADAPTADOR DE FONE IPHONE/LIGHTNING INOVA CBO-7582",
@@ -1538,7 +1538,7 @@ const initialProducts = [
 ];
 
 // ── Frete inicial ─────────────────────────────────────────────
-const initialShipping = [
+var initialShipping = [
     { nome: 'Centro', valor: 15 },
     { nome: 'Retiro', valor: 15 },
     { nome: 'Quitandinha', valor: 15 },
