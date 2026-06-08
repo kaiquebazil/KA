@@ -124,7 +124,11 @@ function renderProducts() {
     if (currentSearch) {
         var q = currentSearch.toLowerCase();
         products = products.filter(function(p) {
-            return p.nome.toLowerCase().indexOf(q) !== -1 || p.categoria.toLowerCase().indexOf(q) !== -1;
+            return (p.nome || '').toLowerCase().indexOf(q) !== -1 ||
+                (p.categoria || '').toLowerCase().indexOf(q) !== -1 ||
+                (p.marca || '').toLowerCase().indexOf(q) !== -1 ||
+                (p.modelo || '').toLowerCase().indexOf(q) !== -1 ||
+                (p.descricao || '').toLowerCase().indexOf(q) !== -1;
         });
     }
     if (currentCategory) {
@@ -205,18 +209,22 @@ function createProductCard(p) {
         : '<span class="product-stock out">Sem estoque</span>';
 
     var imgSrc = p.imagem || 'https://placehold.co/400x400/11141b/ffffff?text=Produto';
-    var waMsg = 'Olá KB Tech! Tenho interesse no produto: ' + p.nome + ' (R$ ' + precoFinal.toFixed(2).replace('.', ',') + '). Poderia me dar mais informações?';
+    var waMsg = 'Ola KB Tech! Tenho interesse no produto: ' + p.nome + ' (R$ ' + precoFinal.toFixed(2).replace('.', ',') + '). Poderia me dar mais informacoes?';
+    var meta = [p.marca, p.modelo].filter(Boolean).join(' ');
+    var alt = p.alt || (p.nome + ' vendido pela KB Tech em Petropolis');
     var waUrl = 'https://wa.me/5524992046467?text=' + encodeURIComponent(waMsg);
 
+    var productArg = JSON.stringify(p.id);
     var addBtn = p.estoque > 0
-        ? '<button class="btn-add-cart" onclick="addToCart(' + p.id + ')"><i class="fas fa-cart-plus"></i> Adicionar ao Carrinho</button>'
+        ? '<button class="btn-add-cart" onclick="addToCart(' + productArg + ')"><i class="fas fa-cart-plus"></i> Adicionar ao Carrinho</button>'
         : '<button class="btn-add-cart" disabled style="opacity:0.5;cursor:not-allowed;"><i class="fas fa-ban"></i> Sem Estoque</button>';
 
     card.innerHTML =
         tags +
-        '<div class="product-img"><img src="' + imgSrc + '" alt="' + p.nome + '" loading="lazy" onerror="this.src=\'https://placehold.co/400x400/11141b/ffffff?text=Produto\'"></div>' +
+        '<div class="product-img"><img src="' + imgSrc + '" alt="' + alt + '" loading="lazy" onerror="this.src=\'https://placehold.co/400x400/11141b/ffffff?text=Produto\'"></div>' +
         '<span class="product-category">' + p.categoria + '</span>' +
         '<h3 class="product-title">' + p.nome + '</h3>' +
+        (meta ? '<p class="product-meta">' + meta + '</p>' : '') +
         '<div class="product-price"><span class="price">R$ ' + precoFinal.toFixed(2).replace('.', ',') + '</span>' + precoOriginal + '</div>' +
         estoque +
         '<div class="product-actions">' + addBtn +

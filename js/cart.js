@@ -20,7 +20,7 @@ function saveCart(cart) {
 function addToCart(productId, quantity) {
     quantity = quantity || 1;
     const products = getProducts();
-    const product = products.find(function(p) { return p.id === productId; });
+    const product = products.find(function(p) { return String(p.id) === String(productId); });
     if (!product) return false;
     if (product.estoque < 1) {
         showToast('Produto sem estoque!', 'error');
@@ -28,7 +28,7 @@ function addToCart(productId, quantity) {
     }
 
     const cart = getCart();
-    const existing = cart.find(function(item) { return item.id === productId; });
+    const existing = cart.find(function(item) { return String(item.id) === String(productId); });
 
     if (existing) {
         if (existing.qty + quantity > product.estoque) {
@@ -70,7 +70,7 @@ function updateCartQty(productId, delta) {
     }
 
     var products = getProducts();
-    var product = products.find(function(p) { return p.id === productId; });
+    var product = products.find(function(p) { return String(p.id) === String(productId); });
     if (product && item.qty > product.estoque) {
         item.qty = product.estoque;
         showToast('Estoque máximo atingido.', 'warning');

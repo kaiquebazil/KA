@@ -1577,25 +1577,44 @@ function normalizeProduct(p) {
     var precoVenda = parseFloat(p.precoVenda !== undefined ? p.precoVenda : p.preco) || 0;
     var precoCusto = parseFloat(p.precoCusto !== undefined ? p.precoCusto : p.custo) || 0;
     var estoqueMinimo = parseInt(p.estoqueMinimo !== undefined ? p.estoqueMinimo : p.estoqueMin) || 5;
+    var lucro = precoVenda - precoCusto;
+    var margem = precoVenda > 0 ? (lucro / precoVenda) * 100 : 0;
     var created = p.criadoEm || p.createdAt || new Date().toISOString();
     return Object.assign({}, p, {
         id: p.id || Date.now(),
         nome: p.nome || '',
+        marca: p.marca || '',
+        modelo: p.modelo || '',
         categoria: p.categoria || 'Outro',
         descricao: p.descricao || '',
         precoCusto: precoCusto,
         precoVenda: precoVenda,
+        precoReferenciaMin: parseFloat(p.precoReferenciaMin) || 0,
+        precoReferenciaMax: parseFloat(p.precoReferenciaMax) || 0,
+        lucro: parseFloat(p.lucro !== undefined ? p.lucro : lucro) || 0,
+        margem: parseFloat(p.margem !== undefined ? p.margem : margem) || 0,
         preco: precoVenda,
         custo: precoCusto,
         estoque: parseInt(p.estoque) || 0,
         estoqueMinimo: estoqueMinimo,
         estoqueMin: estoqueMinimo,
         imagem: p.imagem || 'https://placehold.co/400',
+        imagensExtras: Array.isArray(p.imagensExtras) ? p.imagensExtras : [],
+        alt: p.alt || (p.nome ? p.nome + ' vendido pela KB Tech em Petropolis' : 'Produto vendido pela KB Tech em Petropolis'),
         fornecedor: p.fornecedor || '',
+        fornecedorPrincipalId: p.fornecedorPrincipalId || '',
+        fornecedorPrincipalNome: p.fornecedorPrincipalNome || p.fornecedor || '',
+        fornecedorWhatsapp: p.fornecedorWhatsapp || '',
+        codigoFornecedor: p.codigoFornecedor || '',
+        linkFornecedor: p.linkFornecedor || '',
+        custoFornecedor: parseFloat(p.custoFornecedor) || 0,
+        prazoReposicao: p.prazoReposicao || '',
         ativo: p.ativo !== false,
         destaque: !!p.destaque,
         maisVendido: !!p.maisVendido,
         oferta: !!p.oferta,
+        observacoes: p.observacoes || '',
+        observacoesFornecedor: p.observacoesFornecedor || '',
         desconto: parseInt(p.desconto) || 0,
         criadoEm: created,
         atualizadoEm: p.atualizadoEm || p.updatedAt || created
@@ -1608,18 +1627,20 @@ function normalizeProducts(products) {
 
 function getPublicProducts() {
     return getProducts()
-        .filter(function(p) { return p.ativo !== false; })
+        .filter(function(p) { return p.ativo !== false && (parseInt(p.estoque) || 0) > 0; })
         .map(function(p) {
             return {
                 id: p.id,
                 nome: p.nome,
+                marca: p.marca || '',
+                modelo: p.modelo || '',
                 categoria: p.categoria,
                 descricao: p.descricao || '',
                 preco: p.precoVenda,
                 precoVenda: p.precoVenda,
                 estoque: p.estoque,
-                estoqueMinimo: p.estoqueMinimo,
                 imagem: p.imagem,
+                alt: p.alt || p.nome,
                 ativo: p.ativo,
                 destaque: p.destaque,
                 maisVendido: p.maisVendido,

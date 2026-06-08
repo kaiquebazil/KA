@@ -10,6 +10,8 @@
 
     var collectionMap = {
         products: { collection: 'produtos', localKey: 'katech_products' },
+        suppliers: { collection: 'fornecedores', localKey: 'kaos_suppliers' },
+        supplierPurchases: { collection: 'comprasFornecedores', localKey: 'kaos_supplier_purchases' },
         customers: { collection: 'clientes', localKey: 'kaos_customers' },
         os: { collection: 'ordensServico', localKey: 'kaos_os' },
         guarantees: { collection: 'garantias', localKey: 'kaos_guarantees' },
@@ -170,6 +172,8 @@
     async function importBackup(data) {
         var pairs = {
             products: data.products,
+            suppliers: data.suppliers || data.fornecedores,
+            supplierPurchases: data.supplierPurchases || data.comprasFornecedores,
             customers: data.customers,
             os: data.os,
             guarantees: data.guarantees,

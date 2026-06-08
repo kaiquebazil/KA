@@ -23,6 +23,14 @@ service cloud.firestore {
       allow write: if signedIn();
     }
 
+    match /fornecedores/{docId} {
+      allow read, write: if signedIn();
+    }
+
+    match /comprasFornecedores/{docId} {
+      allow read, write: if signedIn();
+    }
+
     match /pedidos/{docId} {
       allow create: if true;
       allow read, update, delete: if signedIn();
