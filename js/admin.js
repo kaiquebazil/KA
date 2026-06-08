@@ -1,6 +1,6 @@
-﻿/* ============================================================
+/* ============================================================
    KB Tech - admin.js
-   LÃ³gica do painel administrativo - CORRIGIDO
+   Lógica do painel administrativo - CORRIGIDO
    ============================================================ */
 
 var ADMIN_PASSWORD = 'katech2024';
@@ -11,11 +11,13 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Admin JS carregado');
 
     updateFirebaseStatus();
-    if (window.KOSAuth && window.KOSAuth.isConfigured()) {
+    if (window.KOSAuth && window.KOSAuth.isReady && window.KOSAuth.isReady()) {
         window.KOSAuth.onAuthStateChanged(function(user) {
             if (user) {
                 sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
                 syncFirebaseThenShow();
+            } else if (sessionStorage.getItem(ADMIN_SESSION_KEY) === '1') {
+                showAdminPanel();
             } else {
                 sessionStorage.removeItem(ADMIN_SESSION_KEY);
                 document.getElementById('login-screen').style.display = 'flex';
@@ -33,15 +35,14 @@ document.addEventListener('DOMContentLoaded', function() {
             var emailEl = document.getElementById('admin-email');
             var email = emailEl ? emailEl.value.trim() : '';
             var pwd = document.getElementById('admin-password').value;
-            if (window.KOSAuth && window.KOSAuth.isConfigured()) {
+            if (window.KOSAuth && window.KOSAuth.isReady && window.KOSAuth.isReady()) {
                 try {
                     await window.KOSAuth.login(email, pwd);
                     await syncFirebaseThenShow();
+                    return;
                 } catch (err) {
-                    var firebaseErr = document.getElementById('login-error');
-                    if (firebaseErr) firebaseErr.style.display = 'flex';
+                    console.warn('Firebase Auth falhou. Tentando login local temporario.', err);
                 }
-                return;
             }
             if (pwd === ADMIN_PASSWORD) {
                 sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
@@ -159,7 +160,7 @@ function initAdminPanel() {
     renderMeiControl();
     renderAdminShipping();
     renderAdminOrders();
-    renderDeliveries();
+    if (typeof renderDeliveries === 'function') renderDeliveries();
     renderReports();
     
     initProductModal();
@@ -169,7 +170,7 @@ function initAdminPanel() {
     ensureFinanceModalFields();
     initFinanceModal();
     initShippingModal();
-    initDeliveryModule();
+    if (typeof initDeliveryModule === 'function') initDeliveryModule();
     initKaosSystem();
     initBackupSystem();
     initResetCatalog();
@@ -201,11 +202,11 @@ function initAdminPanel() {
     }
 
     var deliverySearch = document.getElementById('delivery-search');
-    if (deliverySearch) {
+    if (deliverySearch && typeof renderDeliveries === 'function') {
         deliverySearch.addEventListener('input', renderDeliveries);
     }
     var deliveryStatusFilter = document.getElementById('delivery-status-filter');
-    if (deliveryStatusFilter) {
+    if (deliveryStatusFilter && typeof renderDeliveries === 'function') {
         deliveryStatusFilter.addEventListener('change', renderDeliveries);
     }
 }
@@ -261,7 +262,7 @@ function initAdminTabs() {
             if (tabId === 'documents') renderDocuments();
             if (tabId === 'shipping') renderAdminShipping();
             if (tabId === 'orders') loadOrdersFromFirebase().then(renderAdminOrders);
-            if (tabId === 'deliveries') loadDeliveriesFromFirebase().then(renderDeliveries);
+            if (tabId === 'deliveries' && typeof loadDeliveriesFromFirebase === 'function' && typeof renderDeliveries === 'function') loadDeliveriesFromFirebase().then(renderDeliveries);
             
             if (window.innerWidth <= 768) {
                 document.body.classList.remove('sidebar-mobile-open');
@@ -278,13 +279,13 @@ function renderDashboard() {
     var products = getProducts();
     
     var osAbertas = os.filter(function(o) { 
-        return o.status === 'Aberto' || o.status === 'Em AnÃ¡lise' || o.status === 'Aguardando PeÃ§a'; 
+        return o.status === 'Aberto' || o.status === 'Em Análise' || o.status === 'Aguardando Peça'; 
     }).length;
     
     var estoqueBaixo = products.filter(function(p) { 
-    var semEstoque = products.filter(function(p) { return p.ativo !== false && (parseInt(p.estoque) || 0) <= 0; }).length;
-    var semFornecedor = products.filter(function(p) { return p.ativo !== false && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); }).length;
-    var aguardandoReposicao = products.filter(function(p) { return p.ativo !== false && (parseInt(p.estoque) || 0) <= (parseInt(p.estoqueMinimo || p.estoqueMin) || 1); }).length;
+    var semEstoque = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= 0; }).length;
+    var semFornecedor = products.filter(function(p) { return p.ativo !== false && !isControlProduct(p) && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); }).length;
+    var aguardandoReposicao = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= (parseInt(p.estoqueMinimo || p.estoqueMin) || 1); }).length;
     var comprasPendentes = purchases.filter(function(c) { return c.status !== 'Recebido' && c.status !== 'Cancelado'; }).length;
         return p.estoque <= (p.estoqueMin || 5); 
     }).length;
@@ -318,7 +319,7 @@ function renderDashboard() {
             var c = customers.find(function(cust) { return cust.id == o.customerId; });
             var tr = document.createElement('tr');
             var statusClass = (o.status || 'aberto').toLowerCase().replace(/ /g, '');
-            tr.innerHTML = '<td>' + (c ? c.nome : 'ExcluÃ­do') + '</td><td>' + o.equipamento + '<td><span class="status-badge status-' + statusClass + '">' + (o.status || 'Aberto') + '</span></td><td>R$ ' + (o.valorServico + o.valorPecas).toFixed(2).replace('.', ',') + '</td>';
+            tr.innerHTML = '<td>' + (c ? c.nome : 'Excluído') + '</td><td>' + o.equipamento + '<td><span class="status-badge status-' + statusClass + '">' + (o.status || 'Aberto') + '</span></td><td>R$ ' + (o.valorServico + o.valorPecas).toFixed(2).replace('.', ',') + '</td>';
             dashOsList.appendChild(tr);
         }
     }
@@ -352,7 +353,7 @@ function renderCustomers(filter) {
     for (var i = 0; i < customers.length; i++) {
         var c = customers[i];
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>' + c.nome + '</td><td>' + (c.doc || '-') + '<tr><td>' + (c.tel || '-') + '</td><td>' + (c.cidade || 'PetrÃ³polis') + '</td><td><div class="table-actions"><button onclick="editCustomer(' + c.id + ')" class="btn-edit-row"><i class="fas fa-edit"></i></button><button onclick="deleteCustomer(' + c.id + ')" class="btn-delete-row"><i class="fas fa-trash"></i></button></div></td>';
+        tr.innerHTML = '<td>' + c.nome + '</td><td>' + (c.doc || '-') + '<tr><td>' + (c.tel || '-') + '</td><td>' + (c.cidade || 'Petrópolis') + '</td><td><div class="table-actions"><button onclick="editCustomer(' + c.id + ')" class="btn-edit-row"><i class="fas fa-edit"></i></button><button onclick="deleteCustomer(' + c.id + ')" class="btn-delete-row"><i class="fas fa-trash"></i></button></div></td>';
         list.appendChild(tr);
     }
 }
@@ -437,7 +438,7 @@ window.editCustomer = function(id) {
     document.getElementById('cust-doc').value = c.doc || '';
     document.getElementById('cust-tel').value = c.tel || '';
     document.getElementById('cust-end').value = c.end || '';
-    document.getElementById('cust-cidade').value = c.cidade || 'PetrÃ³polis';
+    document.getElementById('cust-cidade').value = c.cidade || 'Petrópolis';
     document.getElementById('cust-bairro').value = c.bairro || '';
     document.getElementById('customer-modal-title').textContent = 'Editar Cliente';
     var modal = document.getElementById('customer-modal');
@@ -457,11 +458,11 @@ window.deleteCustomer = function(id) {
         }
         saveCustomers(newCustomers);
         renderCustomers();
-        showAdminToast('Cliente excluÃ­do!');
+        showAdminToast('Cliente excluído!');
     }
 };
 
-// Ordens de Servico
+// Ordens de Serviço
 function getOS() { 
     return JSON.parse(localStorage.getItem('kaos_os') || '[]'); 
 }
@@ -491,7 +492,7 @@ function renderOS() {
             '<button onclick="editOS(' + o.id + ')" class="btn-edit-row"><i class="fas fa-edit"></i></button>' +
             '<button onclick="deleteOS(' + o.id + ')" class="btn-delete-row"><i class="fas fa-trash"></i></button>';
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>#' + o.id.toString().slice(-4) + '</td><td>' + (c ? c.nome : (o.clienteNome || 'ExcluÃ­do')) + '</td><td>' + (o.equipamento || '-') + '</td><td>' + (o.data ? o.data.split('-').reverse().join('/') : '-') + '</td><td><span class="status-badge status-' + statusClass + '">' + (o.status || 'Aberto') + '</span></td><td>R$ ' + total.toFixed(2).replace('.', ',') + '</td><td><div class="table-actions">' + osActions + '</div></td>';
+        tr.innerHTML = '<td>#' + o.id.toString().slice(-4) + '</td><td>' + (c ? c.nome : (o.clienteNome || 'Excluído')) + '</td><td>' + (o.equipamento || '-') + '</td><td>' + (o.data ? o.data.split('-').reverse().join('/') : '-') + '</td><td><span class="status-badge status-' + statusClass + '">' + (o.status || 'Aberto') + '</span></td><td>R$ ' + total.toFixed(2).replace('.', ',') + '</td><td><div class="table-actions">' + osActions + '</div></td>';
         list.appendChild(tr);
     }
 }
@@ -564,7 +565,7 @@ function initOSModal() {
             valorServico: parseFloat(document.getElementById('os-valor-serv').value) || 0,
             valorPecas: parseFloat(document.getElementById('os-valor-pecas').value) || 0,
             garantia: parseInt(document.getElementById('os-garantia').value) || 90,
-            pagamento: document.getElementById('os-pagamento').value || 'NÃ£o informado'
+            pagamento: document.getElementById('os-pagamento').value || 'Não informado'
         };
 
         if (id) {
@@ -626,7 +627,7 @@ window.deleteOS = function(id) {
         }
         saveOS(newOS);
         renderOS();
-        showAdminToast('OS excluÃ­da!');
+        showAdminToast('OS excluída!');
     }
 };
 
@@ -668,12 +669,12 @@ function generateOSHTML(o, c) {
         '            <div class="company">\n' +
         '                <h2>KB Tech</h2>\n' +
         '                <p>CNPJ: 55.452.123/0001-89</p>\n' +
-        '                <p>PetrÃ³polis, RJ</p>\n' +
+        '                <p>Petrópolis, RJ</p>\n' +
         '                <p>WhatsApp: (24) 99204-6467</p>\n' +
         '            </div>\n' +
         '            <div class="title">\n' +
         '                <h1>ORDEM DE SERVICO</h1>\n' +
-        '                <p><strong>NÂº:</strong> ' + o.id.toString().slice(-6) + '</p>\n' +
+        '                <p><strong>Nº:</strong> ' + o.id.toString().slice(-6) + '</p>\n' +
         '                <p><strong>Data:</strong> ' + dataEntrada + '</p>\n' +
         '            </div>\n' +
         '        </div>\n' +
@@ -697,13 +698,13 @@ function generateOSHTML(o, c) {
         '        </div>\n' +
         '        <div class="section">\n' +
         '            <h4>LAUDO TECNICO / SERVICO REALIZADO</h4>\n' +
-        '            <p>' + (o.laudo || 'Aguardando anÃ¡lise.') + '</p>\n' +
+        '            <p>' + (o.laudo || 'Aguardando análise.') + '</p>\n' +
         '        </div>\n' +
         '        <table>\n' +
-        '            <thead><tr><th>DescriÃ§Ã£o</th><th style="text-align:right">Valor (R$)</th></tr></thead>\n' +
+        '            <thead><tr><th>Descrição</th><th style="text-align:right">Valor (R$)</th></tr></thead>\n' +
         '            <tbody>\n' +
-        '                <tr><td>MÃ£o de Obra / ServiÃ§o</td><td style="text-align:right">R$ ' + o.valorServico.toFixed(2).replace('.', ',') + '</td></tr>\n' +
-        '                <tr><td>PeÃ§as / Componentes</td><td style="text-align:right">R$ ' + o.valorPecas.toFixed(2).replace('.', ',') + '</td></tr>\n' +
+        '                <tr><td>Mão de Obra / Serviço</td><td style="text-align:right">R$ ' + o.valorServico.toFixed(2).replace('.', ',') + '</td></tr>\n' +
+        '                <tr><td>Peças / Componentes</td><td style="text-align:right">R$ ' + o.valorPecas.toFixed(2).replace('.', ',') + '</td></tr>\n' +
         '            </tbody>\n' +
         '            <tfoot><tr style="background:#f9f9f9; font-weight:bold;"><td>TOTAL</td><td style="text-align:right">R$ ' + total + '</td></tr></tfoot>\n' +
         '        </table>\n' +
@@ -733,7 +734,7 @@ window.printOSAsPDF = function(id) {
     }
     
     if (!o) {
-        showAdminToast('OS nÃ£o encontrada!', 'error');
+        showAdminToast('OS não encontrada!', 'error');
         return;
     }
     
@@ -779,7 +780,7 @@ window.createDocumentFromOS = function(id, type) {
         formaPagamento: os.pagamento || os.formaPagamento || '',
         referenciaId: os.id,
         referenciaTipo: 'OS',
-        origem: 'Ordem de Servico'
+        origem: 'Ordem de Serviço'
     });
 };
 
@@ -799,7 +800,7 @@ window.createGuaranteeFromOS = function(id) {
         descricao: os.equipamento + ' - garantia de ' + (os.garantia || os.garantiaDias || 90) + ' dias',
         valor: 0,
         dataEmissao: new Date().toISOString().slice(0, 10),
-        origem: 'Ordem de Servico',
+        origem: 'Ordem de Serviço',
         referenciaId: os.id,
         referenciaTipo: 'OS',
         status: 'Gerado',
@@ -858,7 +859,7 @@ function renderAdminProducts(filter) {
     for (var i = 0; i < products.length; i++) {
         if (products[i].ativo !== false && products[i].destaque) destaqueCount++;
         if (products[i].ativo !== false && products[i].oferta) ofertaCount++;
-        if (products[i].ativo !== false && products[i].estoque <= 0) zeradoCount++;
+        if (!KOS_DROPSHIP_MODE && products[i].ativo !== false && products[i].estoque <= 0) zeradoCount++;
     }
     if (statDestaque) statDestaque.textContent = destaqueCount;
     if (statOferta) statOferta.textContent = ofertaCount;
@@ -874,19 +875,20 @@ function renderAdminProducts(filter) {
         if (p.maisVendido) flags += '<span class="flag-badge flag-mais-vendido">+Vendido</span>';
 
         var stockClass = '';
-        if (p.estoque <= 0) stockClass = 'stock-zero';
-        else if (p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5)) stockClass = 'stock-low';
+        if (!isDropshipProduct(p) && p.estoque <= 0) stockClass = 'stock-zero';
+        else if (!isDropshipProduct(p) && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5)) stockClass = 'stock-low';
         
         var precoVenda = parseFloat(p.precoVenda !== undefined ? p.precoVenda : p.preco) || 0;
         var precoCusto = parseFloat(p.precoCusto !== undefined ? p.precoCusto : p.custo) || 0;
         var lucro = precoVenda - precoCusto;
         var margem = precoVenda > 0 ? ((lucro / precoVenda) * 100).toFixed(1) : 0;
         var lucroClass = lucro < 0 ? 'lucro-negativo' : '';
-        var stockLabel = p.estoque <= 0 ? p.estoque + ' - zerado' : (p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5) ? p.estoque + ' - baixo' : p.estoque);
+        var stockLabel = isDropshipProduct(p) ? 'Dropship' : (p.estoque <= 0 ? p.estoque + ' - zerado' : (p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5) ? p.estoque + ' - baixo' : p.estoque));
         var toggleIcon = p.ativo === false ? 'fa-toggle-on' : 'fa-toggle-off';
         var toggleTitle = p.ativo === false ? 'Reativar produto' : 'Inativar produto';
-        var supplierName = p.fornecedorPrincipalNome || p.fornecedor || 'Sem fornecedor';
-        var supplierAction = '<button onclick="requestSupplierOrder(' + p.id + ')" class="btn-edit-row" title="Pedir ao fornecedor"><i class="fab fa-whatsapp"></i></button>';
+        var supplierName = p.fornecedorPrincipalNome || p.fornecedor || (isControlProduct(p) ? 'Exceção: controles' : 'Sem fornecedor');
+        var hasSupplierContact = p.fornecedorWhatsapp || p.fornecedorPrincipalNome || p.fornecedor;
+        var supplierAction = hasSupplierContact ? '<button onclick="requestSupplierOrder(' + p.id + ')" class="btn-edit-row" title="Pedir ao fornecedor"><i class="fab fa-whatsapp"></i></button>' : '';
 
         var tr = document.createElement('tr');
         tr.innerHTML = '<td>#' + p.id.toString().slice(-4) + '</td><td><img src="' + (p.imagem || 'https://placehold.co/100') + '" width="40" alt="' + (p.alt || p.nome) + '" onerror="this.src=\'https://placehold.co/100\'"></td><td><strong>' + p.nome.substring(0, 30) + (p.nome.length > 30 ? '...' : '') + '</strong><br><small>' + [p.marca, p.modelo].filter(Boolean).join(' ') + '</small><br><small>' + supplierName + '</small></td><td>' + p.categoria + '</td><td>R$ ' + precoCusto.toFixed(2).replace('.', ',') + '</td><td>R$ ' + precoVenda.toFixed(2).replace('.', ',') + '</td><td class="' + lucroClass + '">R$ ' + lucro.toFixed(2).replace('.', ',') + '</td><td>' + margem + '%</td><td class="' + stockClass + '">' + stockLabel + '</td><td>' + flags + '</td><td><div class="table-actions">' + supplierAction + '<button onclick="editProduct(' + p.id + ')" class="btn-edit-row" title="Editar"><i class="fas fa-edit"></i></button><button onclick="toggleProductActive(' + p.id + ')" class="btn-edit-row" title="' + toggleTitle + '"><i class="fas ' + toggleIcon + '"></i></button><button onclick="deleteProduct(' + p.id + ')" class="btn-delete-row" title="Excluir"><i class="fas fa-trash"></i></button></div></td>';
@@ -1047,14 +1049,40 @@ window.deleteProduct = function(id) {
         }
         saveProducts(newProducts);
         renderAdminProducts();
-        showAdminToast('Produto excluÃ­do!');
+        showAdminToast('Produto excluído!');
     }
 };
 
 var SUPPLIERS_KEY = 'kaos_suppliers';
 var SUPPLIER_PURCHASES_KEY = 'kaos_supplier_purchases';
-var SUPPLIER_PURCHASE_STATUS = ['Orcamento solicitado', 'Pedido enviado', 'Aguardando pagamento', 'Aguardando entrega', 'Recebido', 'Cancelado'];
+var KOS_DROPSHIP_MODE = true;
+var SUPPLIER_PURCHASE_STATUS = ['Orçamento solicitado', 'Pedido enviado', 'Aguardando pagamento', 'Aguardando entrega', 'Recebido', 'Cancelado'];
 var KOS_PRODUCT_CATEGORIES = ['Controles Remotos', 'Carregadores', 'Cabos', 'Adaptadores', 'Acessorios para TV', 'Acessorios para Celular', 'Perifericos', 'Mouse', 'Teclado', 'Headset', 'Informatica', 'Audio', 'TV e Streaming', 'Redes', 'Outro'];
+var KOS_DEFAULT_SUPPLIER = {
+    id: 'tecnocell',
+    nome: 'Tecnocell',
+    empresa: 'Tecnocell',
+    telefone: '(24) 99826-6051',
+    whatsapp: '(24) 99826-6051',
+    categoriasAtendidas: ['Carregadores', 'Cabos', 'Adaptadores', 'Acessorios para TV', 'Acessorios para Celular', 'Perifericos', 'Mouse', 'Teclado', 'Headset', 'Informatica', 'Audio', 'TV e Streaming', 'Redes', 'Outro'],
+    ativo: true
+};
+
+function isControlProduct(product) {
+    product = product || {};
+    return /controle/i.test(String(product.categoria || '')) || /controle/i.test(String(product.nome || ''));
+}
+
+function isDropshipProduct(product) {
+    return KOS_DROPSHIP_MODE || !!(product && product.dropshipping);
+}
+
+function getInventoryInvestment() {
+    if (KOS_DROPSHIP_MODE) return 0;
+    return getProducts().reduce(function(acc, p) {
+        return acc + ((parseFloat(p.precoCusto || p.custo) || 0) * (parseFloat(p.estoque) || 0));
+    }, 0);
+}
 
 function safeJson(key) {
     try { return JSON.parse(localStorage.getItem(key) || '[]'); }
@@ -1062,7 +1090,12 @@ function safeJson(key) {
 }
 
 function getSuppliers() {
-    return safeJson(SUPPLIERS_KEY).map(normalizeSupplier);
+    var suppliers = safeJson(SUPPLIERS_KEY).map(normalizeSupplier);
+    var hasTecnocell = suppliers.some(function(s) {
+        return String(s.id) === String(KOS_DEFAULT_SUPPLIER.id) || String(s.nome || '').toLowerCase() === 'tecnocell';
+    });
+    if (!hasTecnocell) suppliers.unshift(normalizeSupplier(KOS_DEFAULT_SUPPLIER));
+    return suppliers;
 }
 
 function saveSuppliers(data) {
@@ -1117,7 +1150,7 @@ function normalizeSupplierPurchase(c) {
         quantidade: qty,
         custoUnitario: unit,
         custoTotal: parseFloat(c.custoTotal) || qty * unit,
-        status: c.status || 'Orcamento solicitado',
+        status: c.status || 'Orçamento solicitado',
         dataPedido: c.dataPedido || new Date().toISOString().slice(0, 10),
         dataRecebimento: c.dataRecebimento || '',
         observacoes: c.observacoes || '',
@@ -1150,7 +1183,7 @@ function ensureSupplierModules() {
         suppliers.innerHTML =
             '<div class="admin-tab-header"><h1><i class="fas fa-truck-field"></i> Fornecedores</h1><button id="btn-add-supplier" class="btn-primary"><i class="fas fa-plus"></i> Novo Fornecedor</button></div>' +
             '<div class="admin-search-bar"><input id="supplier-search" placeholder="Buscar por fornecedor, WhatsApp, categoria ou cidade"><select id="supplier-category-filter"><option value="">Todas categorias</option>' + KOS_PRODUCT_CATEGORIES.map(function(c) { return '<option>' + c + '</option>'; }).join('') + '</select><button id="btn-apply-supplier-filter" class="btn-secondary">Filtrar</button></div>' +
-            '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Fornecedor</th><th>Contato</th><th>Categorias</th><th>Produtos</th><th>Historico</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="suppliers-list"></tbody></table></div>';
+            '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Fornecedor</th><th>Contato</th><th>Categorias</th><th>Produtos</th><th>Histórico</th><th>Status</th><th>Ações</th></tr></thead><tbody id="suppliers-list"></tbody></table></div>';
         var customers = document.getElementById('tab-customers');
         main.insertBefore(suppliers, customers || null);
     }
@@ -1160,7 +1193,7 @@ function ensureSupplierModules() {
         purchases.className = 'admin-tab';
         purchases.innerHTML =
             '<div class="admin-tab-header"><h1><i class="fas fa-boxes-packing"></i> Compras com Fornecedores</h1><button id="btn-add-supplier-purchase" class="btn-primary"><i class="fas fa-plus"></i> Nova Compra</button></div>' +
-            '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Data</th><th>Fornecedor</th><th>Produto</th><th>Qtd</th><th>Custo</th><th>Status</th><th>Acoes</th></tr></thead><tbody id="supplier-purchases-list"></tbody></table></div>';
+            '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Data</th><th>Fornecedor</th><th>Produto</th><th>Qtd</th><th>Custo</th><th>Status</th><th>Ações</th></tr></thead><tbody id="supplier-purchases-list"></tbody></table></div>';
         var customers2 = document.getElementById('tab-customers');
         main.insertBefore(purchases, customers2 || null);
     }
@@ -1214,7 +1247,7 @@ function ensureProductSupplyFields() {
         '<div class="form-group"><label for="prod-preco-ref-min">Referencia Min.</label><input type="number" id="prod-preco-ref-min" min="0" step="0.01"></div>' +
         '<div class="form-group"><label for="prod-preco-ref-max">Referencia Max.</label><input type="number" id="prod-preco-ref-max" min="0" step="0.01"></div>' +
         '</div>' +
-        '<div class="form-group"><label for="prod-observacoes-fornecedor">Observacoes do Fornecedor</label><textarea id="prod-observacoes-fornecedor" rows="2"></textarea></div>';
+        '<div class="form-group"><label for="prod-observacoes-fornecedor">Observações do Fornecedor</label><textarea id="prod-observacoes-fornecedor" rows="2"></textarea></div>';
     fornecedorInput.closest('.form-row').insertAdjacentElement('afterend', extra);
     refreshProductSupplierOptions();
 }
@@ -1327,7 +1360,7 @@ window.requestSupplierOrder = function(productId, qty) {
     var message = 'Ola, tudo bem?\n\nSou da KB Tech.\n\nGostaria de verificar disponibilidade do produto:\n\nProduto: ' + product.nome + '\nMarca: ' + (product.marca || '-') + '\nModelo: ' + (product.modelo || '-') + '\nCodigo fornecedor: ' + (product.codigoFornecedor || '-') + '\nQuantidade: ' + quantity + '\nCategoria: ' + (product.categoria || '-') + '\n\nPode me passar valor e prazo de entrega?\n\nObrigado.';
     window.open('https://wa.me/' + normalizeWhatsappNumber(supplierPhone) + '?text=' + encodeURIComponent(message), '_blank');
     if (confirm('Deseja registrar essa solicitacao no historico de compras?')) {
-        createSupplierPurchase(product, supplier, quantity, 'Orcamento solicitado');
+        createSupplierPurchase(product, supplier, quantity, 'Orçamento solicitado');
     }
 };
 
@@ -1346,7 +1379,7 @@ function createSupplierPurchase(product, supplier, quantity, status) {
         quantidade: quantity,
         custoUnitario: unit,
         custoTotal: unit * quantity,
-        status: status || 'Orcamento solicitado',
+        status: status || 'Orçamento solicitado',
         observacoes: product.observacoesFornecedor || ''
     }));
     saveSupplierPurchases(purchases);
@@ -1422,7 +1455,7 @@ window.editSupplier = function(id) {
         email: prompt('Email', s.email || '') || s.email || '',
         cidade: prompt('Cidade', s.cidade || 'Petropolis') || s.cidade || 'Petropolis',
         categoriasAtendidas: (prompt('Categorias atendidas separadas por virgula', (s.categoriasAtendidas || []).join(', ')) || '').split(',').map(function(v) { return v.trim(); }).filter(Boolean),
-        observacoes: prompt('Observacoes', s.observacoes || '') || s.observacoes || '',
+        observacoes: prompt('Observações', s.observacoes || '') || s.observacoes || '',
         ativo: s.ativo !== false,
         criadoEm: s.criadoEm
     });
@@ -1462,9 +1495,9 @@ window.editSupplierPurchase = function(id) {
         categoria: prompt('Categoria', c.categoria || '') || c.categoria || '',
         quantidade: parseInt(prompt('Quantidade', c.quantidade || 1)) || 1,
         custoUnitario: parseFloat(prompt('Custo unitario', c.custoUnitario || 0)) || 0,
-        status: prompt('Status', c.status || 'Orcamento solicitado') || c.status || 'Orcamento solicitado',
+        status: prompt('Status', c.status || 'Orçamento solicitado') || c.status || 'Orçamento solicitado',
         dataPedido: c.dataPedido || new Date().toISOString().slice(0, 10),
-        observacoes: prompt('Observacoes', c.observacoes || '') || c.observacoes || '',
+        observacoes: prompt('Observações', c.observacoes || '') || c.observacoes || '',
         criadoEm: c.criadoEm
     });
     var idx = purchases.findIndex(function(item) { return String(item.id) === String(data.id); });
@@ -1512,8 +1545,8 @@ function handleSupplierPurchaseReceived(purchase) {
         tipo: 'Despesa',
         descricao: 'Compra de ' + purchase.produtoNome + ' - ' + purchase.fornecedorNome,
         desc: 'Compra de ' + purchase.produtoNome + ' - ' + purchase.fornecedorNome,
-        categoria: purchase.categoria === 'Pecas' ? 'Pecas' : 'Estoque',
-        cat: purchase.categoria === 'Pecas' ? 'Pecas' : 'Estoque',
+        categoria: purchase.categoria === 'Peças' ? 'Peças' : 'Estoque',
+        cat: purchase.categoria === 'Peças' ? 'Peças' : 'Estoque',
         valor: parseFloat(purchase.custoTotal) || 0,
         formaPagamento: '',
         data: new Date().toISOString().slice(0, 10),
@@ -1538,13 +1571,13 @@ window.deleteSupplierPurchase = function(id) {
 function seedInitialKosProducts() {
     var products = getProducts();
     var seed = [
-        ['Controle Remoto LG Kapbom KA-2825', 'Kapbom', 'KA-2825', 'Controles Remotos', 24.90, 'Controle remoto compativel com TVs LG. Ideal para reposicao. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.'],
-        ['Controle Remoto LG Smart Kapbom KA-2985', 'Kapbom', 'KA-2985', 'Controles Remotos', 29.90, 'Controle remoto compativel com TVs LG Smart. Ideal para reposicao, com botoes de navegacao e funcoes inteligentes. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.'],
-        ['Controle Remoto AOC Smart Lelong LE-7411', 'Lelong', 'LE-7411', 'Controles Remotos', 29.90, 'Controle remoto compativel com TVs AOC Smart. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.'],
-        ['Controle Remoto Smart Kapbom com Netflix/YouTube', 'Kapbom', 'modelo a confirmar', 'Controles Remotos', 34.90, 'Controle remoto Smart com atalhos para Netflix e YouTube. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.'],
-        ['Carregador Fonte Notebook Kapbom KAP-1180', 'Kapbom', 'KAP-1180', 'Carregadores', 59.90, 'Fonte para notebook Kapbom KAP-1180. Verifique voltagem, amperagem e tipo de conector antes da compra.'],
-        ['Carregador USB-C Lelong LEY-235', 'Lelong', 'LEY-235', 'Carregadores', 29.90, 'Carregador USB-C compacto para uso diario, indicado para celulares e dispositivos compativeis. Verifique voltagem, amperagem e tipo de conector antes da compra.'],
-        ['Cabo Lightning Lelong Metalico', 'Lelong', 'modelo a confirmar', 'Cabos', 24.90, 'Cabo Lightning metalico para uso diario com dispositivos compativeis. Verifique voltagem, amperagem e tipo de conector antes da compra.']
+        ['Controle Remoto LG Kapbom KA-2825', 'Kapbom', 'KA-2825', 'Controles Remotos', 24.90, 'Controle remoto compativel com TVs LG. Ideal para reposicao. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.', 7],
+        ['Controle Remoto LG Smart Kapbom KA-2985', 'Kapbom', 'KA-2985', 'Controles Remotos', 29.90, 'Controle remoto compativel com TVs LG Smart. Ideal para reposicao, com botoes de navegacao e funcoes inteligentes. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.', 4],
+        ['Controle Remoto AOC Smart Lelong LE-7411', 'Lelong', 'LE-7411', 'Controles Remotos', 29.90, 'Controle remoto compativel com TVs AOC Smart. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.', 9],
+        ['Controle Remoto Smart Kapbom com Netflix/YouTube', 'Kapbom', 'modelo a confirmar', 'Controles Remotos', 34.90, 'Controle remoto Smart com atalhos para Netflix e YouTube. Produto compativel com modelos selecionados. Confirme a compatibilidade antes da compra.', 6],
+        ['Carregador Fonte Notebook Kapbom KAP-1180', 'Kapbom', 'KAP-1180', 'Carregadores', 59.90, 'Fonte para notebook Kapbom KAP-1180. Verifique voltagem, amperagem e tipo de conector antes da compra.', 11],
+        ['Carregador USB-C Lelong LEY-235', 'Lelong', 'LEY-235', 'Carregadores', 29.90, 'Carregador USB-C compacto para uso diario, indicado para celulares e dispositivos compativeis. Verifique voltagem, amperagem e tipo de conector antes da compra.', 15],
+        ['Cabo Lightning Lelong Metalico', 'Lelong', 'modelo a confirmar', 'Cabos', 24.90, 'Cabo Lightning metalico para uso diario com dispositivos compativeis. Verifique voltagem, amperagem e tipo de conector antes da compra.', 13]
     ];
     var changed = false;
     seed.forEach(function(item, idx) {
@@ -1561,7 +1594,7 @@ function seedInitialKosProducts() {
                 precoVenda: item[4],
                 custo: 0,
                 precoCusto: 0,
-                estoque: 1,
+                estoque: item[6],
                 estoqueMin: 1,
                 estoqueMinimo: 1,
                 imagem: 'https://placehold.co/600x600/ffffff/111111?text=' + encodeURIComponent(item[1] + ' ' + item[2]),
@@ -1682,8 +1715,180 @@ window.deleteBairro = function(nome) {
         }
         saveShipping(newShipping);
         renderAdminShipping();
-        showAdminToast('Bairro excluÃ­do!');
+        showAdminToast('Bairro excluído!');
     }
+};
+
+function getDeliveries() {
+    return JSON.parse(localStorage.getItem('kaos_deliveries') || '[]');
+}
+
+function saveDeliveries(data) {
+    var normalized = (data || []).map(normalizeDelivery);
+    localStorage.setItem('kaos_deliveries', JSON.stringify(normalized));
+    if (window.KOSData) window.KOSData.saveCollection('deliveries', normalized);
+}
+
+function normalizeDelivery(d) {
+    d = d || {};
+    var taxa = parseFloat(d.taxa || d.frete) || 0;
+    var valorPedido = parseFloat(d.valorPedido || d.subtotal) || 0;
+    return Object.assign({}, d, {
+        id: d.id || Date.now(),
+        pedidoId: d.pedidoId || d.numeroPedido || '',
+        numeroPedido: d.numeroPedido || d.pedidoId || '',
+        cliente: d.cliente || d.clienteNome || '',
+        telefone: d.telefone || '',
+        endereco: d.endereco || '',
+        bairro: d.bairro || '',
+        cidade: d.cidade || 'Petropolis',
+        taxa: taxa,
+        valorPedido: valorPedido,
+        valorTotal: parseFloat(d.valorTotal) || valorPedido + taxa,
+        status: d.status || 'Pendente',
+        previsao: d.previsao || '',
+        entregador: d.entregador || '',
+        observacoes: d.observacoes || '',
+        criadoEm: d.criadoEm || new Date().toISOString(),
+        atualizadoEm: d.atualizadoEm || new Date().toISOString()
+    });
+}
+
+async function loadDeliveriesFromFirebase() {
+    if (!window.KOSData || !window.KOSData.isOnline()) return getDeliveries();
+    try {
+        var deliveries = await window.KOSData.fetchCollection('deliveries');
+        saveDeliveries(deliveries);
+        return deliveries;
+    } catch (err) {
+        console.warn('Falha ao carregar entregas do Firebase.', err);
+        return getDeliveries();
+    }
+}
+
+function renderDeliveries() {
+    var list = document.getElementById('deliveries-list');
+    if (!list) return;
+    var q = (document.getElementById('delivery-search')?.value || '').toLowerCase();
+    var status = document.getElementById('delivery-status-filter')?.value || '';
+    var deliveries = getDeliveries().filter(function(d) {
+        var text = [d.numeroPedido, d.cliente, d.telefone, d.endereco, d.bairro, d.entregador].join(' ').toLowerCase();
+        if (q && !text.includes(q)) return false;
+        if (status && d.status !== status) return false;
+        return true;
+    });
+    list.innerHTML = '';
+    deliveries.slice().reverse().forEach(function(d) {
+        var id = String(d.id).replace(/'/g, "\\'");
+        var actions = "<button class=\"btn-edit-row\" onclick=\"editDelivery('" + id + "')\"><i class=\"fas fa-edit\"></i></button>" +
+            "<button class=\"btn-delete-row\" onclick=\"deleteDelivery('" + id + "')\"><i class=\"fas fa-trash\"></i></button>";
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + (d.numeroPedido || '-') + '</td><td>' + (d.cliente || '-') + '<br><small>' + (d.telefone || '') + '</small></td><td>' + (d.endereco || '-') + '<br><small>' + (d.bairro || '') + '</small></td><td>' + d.status + '</td><td>' + (d.previsao || '-') + '</td><td>' + (d.entregador || '-') + '</td><td>' + formatBRL(d.taxa) + '</td><td>' + formatBRL(d.valorTotal) + '</td><td><div class="table-actions">' + actions + '</div></td>';
+        list.appendChild(tr);
+    });
+}
+
+function initDeliveryModule() {
+    var btnAdd = document.getElementById('btn-add-delivery');
+    var form = document.getElementById('delivery-form');
+    var modal = document.getElementById('delivery-modal');
+    var overlay = document.getElementById('overlay');
+    var cancel = document.getElementById('cancel-delivery-modal');
+    var close = document.getElementById('close-delivery-modal');
+    var statusFilter = document.getElementById('delivery-status-filter');
+    var statusSelect = document.getElementById('delivery-status');
+    if (statusFilter && statusFilter.options.length <= 1) {
+        ['Pendente', 'Em rota', 'Entregue', 'Cancelada'].forEach(function(st) {
+            var opt = document.createElement('option');
+            opt.textContent = st;
+            statusFilter.appendChild(opt);
+        });
+    }
+    if (statusSelect && statusSelect.options.length === 0) {
+        ['Pendente', 'Em rota', 'Entregue', 'Cancelada'].forEach(function(st) {
+            var opt = document.createElement('option');
+            opt.textContent = st;
+            statusSelect.appendChild(opt);
+        });
+    }
+    function closeModal() {
+        if (modal) modal.classList.remove('active');
+        if (modal) modal.style.display = 'none';
+        if (overlay) overlay.classList.remove('active');
+    }
+    if (btnAdd) btnAdd.onclick = function() {
+        if (!form || !modal) return;
+        form.reset();
+        setFieldValue('delivery-id', '');
+        setFieldValue('delivery-cidade', 'Petropolis');
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    };
+    if (cancel) cancel.onclick = closeModal;
+    if (close) close.onclick = closeModal;
+    if (form) form.onsubmit = function(e) {
+        e.preventDefault();
+        var id = getFieldValue('delivery-id');
+        var deliveries = getDeliveries();
+        var data = normalizeDelivery({
+            id: id || Date.now(),
+            numeroPedido: getFieldValue('delivery-numero-pedido'),
+            pedidoId: getFieldValue('delivery-pedido-id'),
+            cliente: getFieldValue('delivery-cliente'),
+            telefone: getFieldValue('delivery-telefone'),
+            endereco: getFieldValue('delivery-endereco'),
+            bairro: getFieldValue('delivery-bairro'),
+            cidade: getFieldValue('delivery-cidade'),
+            taxa: getFieldValue('delivery-taxa'),
+            valorPedido: getFieldValue('delivery-valor-pedido'),
+            valorTotal: getFieldValue('delivery-valor-total'),
+            status: getFieldValue('delivery-status') || 'Pendente',
+            previsao: getFieldValue('delivery-previsao'),
+            entregador: getFieldValue('delivery-entregador'),
+            observacoes: getFieldValue('delivery-observacoes')
+        });
+        var idx = deliveries.findIndex(function(d) { return String(d.id) === String(data.id); });
+        if (idx >= 0) deliveries[idx] = data;
+        else deliveries.push(data);
+        saveDeliveries(deliveries);
+        renderDeliveries();
+        closeModal();
+        showAdminToast('Entrega salva!');
+    };
+}
+
+window.editDelivery = function(id) {
+    var d = getDeliveries().find(function(item) { return String(item.id) === String(id); });
+    if (!d) return;
+    var modal = document.getElementById('delivery-modal');
+    var overlay = document.getElementById('overlay');
+    setFieldValue('delivery-id', d.id);
+    setFieldValue('delivery-numero-pedido', d.numeroPedido);
+    setFieldValue('delivery-pedido-id', d.pedidoId);
+    setFieldValue('delivery-cliente', d.cliente);
+    setFieldValue('delivery-telefone', d.telefone);
+    setFieldValue('delivery-endereco', d.endereco);
+    setFieldValue('delivery-bairro', d.bairro);
+    setFieldValue('delivery-cidade', d.cidade);
+    setFieldValue('delivery-taxa', d.taxa);
+    setFieldValue('delivery-valor-pedido', d.valorPedido);
+    setFieldValue('delivery-valor-total', d.valorTotal);
+    setFieldValue('delivery-status', d.status);
+    setFieldValue('delivery-previsao', d.previsao);
+    setFieldValue('delivery-entregador', d.entregador);
+    setFieldValue('delivery-observacoes', d.observacoes);
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+    }
+    if (overlay) overlay.classList.add('active');
+};
+
+window.deleteDelivery = function(id) {
+    if (!confirm('Excluir entrega?')) return;
+    saveDeliveries(getDeliveries().filter(function(d) { return String(d.id) !== String(id); }));
+    renderDeliveries();
 };
 
 var ORDER_STATUS_OPTIONS = ['Novo', 'Em atendimento', 'Aguardando pagamento', 'Pago', 'Separado', 'Entregue', 'Cancelado'];
@@ -1765,7 +1970,7 @@ function renderAdminOrders() {
             '<button class="btn-edit-row" onclick="finishOrder(\'' + o.id + '\')" title="Finalizar"><i class="fas fa-check"></i></button>' +
             '<button class="btn-delete-row" onclick="cancelOrder(\'' + o.id + '\')" title="Cancelar"><i class="fas fa-ban"></i></button>' +
             '<button class="btn-edit-row" onclick="createRevenueFromOrder(\'' + o.id + '\')" title="Virar receita"><i class="fas fa-wallet"></i></button>' +
-            ((o.status === 'Pago' || o.status === 'Entregue') && !o.estoqueBaixado ? '<button class="btn-edit-row" onclick="manualStockOutOrder(\'' + o.id + '\')" title="Baixar estoque"><i class="fas fa-box-open"></i></button>' : '') +
+            (!KOS_DROPSHIP_MODE && (o.status === 'Pago' || o.status === 'Entregue') && !o.estoqueBaixado ? '<button class="btn-edit-row" onclick="manualStockOutOrder(\'' + o.id + '\')" title="Baixar estoque"><i class="fas fa-box-open"></i></button>' : '') +
             '</div>';
         container.appendChild(div);
     }
@@ -1896,6 +2101,10 @@ window.registerOfficialNoteFromOrder = function(orderId) {
 };
 
 window.manualStockOutOrder = function(orderId) {
+    if (KOS_DROPSHIP_MODE) {
+        showAdminToast('Modo dropship ativo: nao ha estoque fisico para baixar.', 'info');
+        return;
+    }
     var order = findOrder(orderId);
     if (!order) return;
     if (order.estoqueBaixado) {
@@ -1990,7 +2199,7 @@ window.printGuaranteeAsPDF = function(id) {
         '    <div class="header"><h2>KB Tech</h2><p>Certificado de Garantia</p></div>\n' +
         '    <div class="section"><strong>Cliente:</strong> ' + g.cliente + '</div>\n' +
         '    <div class="section"><strong>Equipamento:</strong> ' + g.equipamento + '</div>\n' +
-        '    <div class="section"><strong>Data de InÃ­cio:</strong> ' + g.inicio + '</div>\n' +
+        '    <div class="section"><strong>Data de Início:</strong> ' + g.inicio + '</div>\n' +
         '    <div class="section"><strong>Data de Vencimento:</strong> ' + g.fim + '</div>\n' +
         '    <div class="section"><strong>Status:</strong> ' + g.status + '</div>\n' +
         '    <div class="signature">KB Tech</div>\n' +
@@ -2008,7 +2217,7 @@ window.printGuaranteeAsPDF = function(id) {
     showAdminToast('Garantia exportada!');
 };
 
-// Orcamentos
+// Orçamentos
 function getQuotes() { 
     return JSON.parse(localStorage.getItem('kaos_quotes') || '[]'); 
 }
@@ -2034,14 +2243,14 @@ function renderQuotes() {
             }
         }
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>#' + q.id.toString().slice(-4) + '</td><td>' + (c ? c.nome : 'ExcluÃ­do') + '</td><td>' + (q.itens ? q.itens.substring(0, 30) : '-') + '<td>R$ ' + (q.valor || 0).toFixed(2).replace('.', ',') + '</td><td>' + (q.status || 'Pendente') + '<td><div class="table-actions"><button onclick="convertToOS(' + q.id + ')" class="btn-edit-row" style="color:#25d366;"><i class="fas fa-tools"></i></button><button onclick="editQuote(' + q.id + ')" class="btn-edit-row"><i class="fas fa-edit"></i></button><button onclick="deleteQuote(' + q.id + ')" class="btn-delete-row"><i class="fas fa-trash"></i></button></div></td>';
+        tr.innerHTML = '<td>#' + q.id.toString().slice(-4) + '</td><td>' + (c ? c.nome : 'Excluído') + '</td><td>' + (q.itens ? q.itens.substring(0, 30) : '-') + '<td>R$ ' + (q.valor || 0).toFixed(2).replace('.', ',') + '</td><td>' + (q.status || 'Pendente') + '<td><div class="table-actions"><button onclick="convertToOS(' + q.id + ')" class="btn-edit-row" style="color:#25d366;"><i class="fas fa-tools"></i></button><button onclick="editQuote(' + q.id + ')" class="btn-edit-row"><i class="fas fa-edit"></i></button><button onclick="deleteQuote(' + q.id + ')" class="btn-delete-row"><i class="fas fa-trash"></i></button></div></td>';
         list.appendChild(tr);
     }
 }
 
 // Financeiro
-var FINANCE_EXPENSE_CATEGORIES = ['Ferramentas', 'PeÃ§as', 'DomÃ­nio', 'Hospedagem', 'Assinaturas', 'Marketing', 'Transporte', 'Embalagens', 'Software', 'Internet', 'Outros'];
-var FINANCE_INCOME_CATEGORIES = ['ServiÃ§o', 'Produto', 'Entrega', 'OrÃ§amento aprovado', 'Outro'];
+var FINANCE_EXPENSE_CATEGORIES = ['Ferramentas', 'Peças', 'Domínio', 'Hospedagem', 'Assinaturas', 'Marketing', 'Transporte', 'Embalagens', 'Software', 'Internet', 'Outros'];
+var FINANCE_INCOME_CATEGORIES = ['Serviço', 'Produto', 'Entrega', 'Orçamento aprovado', 'Outro'];
 
 function normalizeFinanceEntry(entry) {
     entry = entry || {};
@@ -2097,7 +2306,7 @@ function renderFinance() {
     if (finLucro) finLucro.textContent = 'R$ ' + (totalReceitas - totalDespesas).toFixed(2).replace('.', ',');
 }
 
-// Socios
+// Sócios
 function renderPartners() {
     var os = getOS();
     var partnersGrid = document.querySelector('.partners-grid');
@@ -2108,10 +2317,10 @@ function renderPartners() {
             totalServicos += os[i].valorServico;
         }
     }
-    partnersGrid.innerHTML = '<div class="stat-card"><h3>Kaique</h3><span class="stat-number">R$ ' + (totalServicos * 0.5).toFixed(2).replace('.', ',') + '</span><span class="stat-label">ComissÃ£o (50%)</span></div><div class="stat-card"><h3>Alex</h3><span class="stat-number">R$ ' + (totalServicos * 0.5).toFixed(2).replace('.', ',') + '</span><span class="stat-label">ComissÃ£o (50%)</span></div>';
+    partnersGrid.innerHTML = '<div class="stat-card"><h3>Kaique</h3><span class="stat-number">R$ ' + (totalServicos * 0.5).toFixed(2).replace('.', ',') + '</span><span class="stat-label">Comissão (50%)</span></div><div class="stat-card"><h3>Alex</h3><span class="stat-number">R$ ' + (totalServicos * 0.5).toFixed(2).replace('.', ',') + '</span><span class="stat-label">Comissão (50%)</span></div>';
 }
 
-// Socios
+// Sócios
 function renderDocuments() {
     var list = document.getElementById('documents-list');
     var empty = document.getElementById('documents-empty');
@@ -2136,7 +2345,7 @@ function renderDocuments() {
         var tr = document.createElement('tr');
         var actions = "<button onclick=\"viewDocument('" + id + "')\" class=\"btn-edit-row\" title=\"Visualizar\"><i class=\"fas fa-eye\"></i></button>" +
             "<button onclick=\"reprintDoc('" + id + "')\" class=\"btn-edit-row\" title=\"Imprimir\"><i class=\"fas fa-print\"></i></button>" +
-            "<button onclick=\"editDocumentNotes('" + id + "')\" class=\"btn-edit-row\" title=\"Observacoes\"><i class=\"fas fa-pen\"></i></button>" +
+            "<button onclick=\"editDocumentNotes('" + id + "')\" class=\"btn-edit-row\" title=\"Observações\"><i class=\"fas fa-pen\"></i></button>" +
             "<button onclick=\"deleteDocumentRecord('" + id + "')\" class=\"btn-delete-row\" title=\"Excluir\"><i class=\"fas fa-trash\"></i></button>";
         tr.innerHTML = '<td>' + (d.dataEmissao || '-') + '</td><td>' + d.tipoDocumento + '</td><td>' + (d.clienteNome || '-') + '</td><td>' + (d.referenciaTipo || '-') + ' #' + (d.referenciaId || '-') + '</td><td>' + formatBRL(d.valor) + '</td><td>' + d.status + '</td><td><div class="table-actions">' + actions + '</div></td>';
         list.appendChild(tr);
@@ -2157,9 +2366,9 @@ function saveDocumentRecord(tipo, cliente, ref) {
     renderDocuments();
 }
 
-var INTERNAL_DOC_NOTICE = 'Este documento Ã© um comprovante interno de atendimento/pagamento da KB Tech e nÃ£o substitui Nota Fiscal eletrÃ´nica oficial.';
+var INTERNAL_DOC_NOTICE = 'Este documento é um comprovante interno de atendimento/pagamento da KB Tech e não substitui Nota Fiscal eletrônica oficial.';
 var DOC_TYPES = ['RECIBO', 'COMPROVANTE', 'ORDEM_SERVICO', 'GARANTIA', 'SOLICITACAO_NOTA_OFICIAL', 'NOTA_OFICIAL_REGISTRADA'];
-var OFFICIAL_NOTE_STATUS = ['Solicitada', 'Em emissÃ£o externa', 'Emitida', 'Enviada ao cliente', 'Cancelada'];
+var OFFICIAL_NOTE_STATUS = ['Solicitada', 'Em emissão externa', 'Emitida', 'Enviada ao cliente', 'Cancelada'];
 
 function getCompanyConfig() {
     var defaults = {
@@ -2170,7 +2379,7 @@ function getCompanyConfig() {
         whatsapp: '5524992046467',
         email: '',
         endereco: '',
-        cidade: 'PetrÃ³polis',
+        cidade: 'Petrópolis',
         estado: 'RJ',
         logo: 'img/logo-transparente.png',
         limiteMeiAnual: 81000
@@ -2252,9 +2461,9 @@ function ensureFiscalModule() {
     tab.innerHTML =
         '<div class="admin-tab-header"><h1><i class="fas fa-folder-open"></i> Fiscal / Documentos</h1><div class="finance-actions"><button id="btn-new-receipt" class="btn-primary">Novo Recibo</button><button id="btn-new-proof" class="btn-secondary">Novo Comprovante</button><button id="btn-request-official-note" class="btn-primary">Cliente pediu Nota Fiscal</button><button id="btn-register-official-note" class="btn-secondary">Registrar Nota Oficial Emitida</button></div></div>' +
         '<div class="dashboard-grid" id="mei-control"></div>' +
-        '<div class="dashboard-row"><div class="dashboard-col"><h3>Notas oficiais solicitadas</h3><div id="official-notes-list" class="orders-list"></div></div><div class="dashboard-col"><h3>ConfiguraÃ§Ã£o KB Tech</h3><div id="company-config-card"></div></div></div>' +
+        '<div class="dashboard-row"><div class="dashboard-col"><h3>Notas oficiais solicitadas</h3><div id="official-notes-list" class="orders-list"></div></div><div class="dashboard-col"><h3>Configuração KB Tech</h3><div id="company-config-card"></div></div></div>' +
         '<div class="admin-search-bar"><select id="doc-filter-type"><option value="">Todos os tipos</option>' + DOC_TYPES.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('') + '</select><input id="doc-filter-client" placeholder="Cliente"><input type="date" id="doc-filter-start"><input type="date" id="doc-filter-end"><select id="doc-filter-status"><option value="">Status</option><option>Gerado</option><option>Solicitada</option><option>Emitida</option><option>Cancelada</option></select><button id="btn-apply-doc-filter" class="btn-secondary">Filtrar</button></div>' +
-        '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Data</th><th>Tipo</th><th>Cliente</th><th>ReferÃªncia</th><th>Valor</th><th>Status</th><th>AÃ§Ãµes</th></tr></thead><tbody id="documents-list"></tbody></table></div>';
+        '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Data</th><th>Tipo</th><th>Cliente</th><th>Referência</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="documents-list"></tbody></table></div>';
     renderCompanyConfigCard();
 }
 
@@ -2275,7 +2484,7 @@ function createInternalDocumentPrompt(type, source) {
     source = source || {};
     var clienteNome = prompt('Cliente', source.clienteNome || '') || '';
     if (!clienteNome) return;
-    var descricao = prompt('DescriÃ§Ã£o do serviÃ§o/produto', source.descricao || '') || '';
+    var descricao = prompt('Descrição do serviço/produto', source.descricao || '') || '';
     var valor = parseFloat(prompt('Valor', source.valor || '0')) || 0;
     var forma = prompt('Forma de pagamento', source.formaPagamento || '') || '';
     var data = {
@@ -2302,21 +2511,21 @@ function createInternalDocumentPrompt(type, source) {
     saveDocuments(docs);
     renderDocuments();
     printFiscalDocument(data);
-    if (confirm('Registrar tambÃ©m como receita no financeiro?')) createFinanceFromDocument(data);
+    if (confirm('Registrar também como receita no financeiro?')) createFinanceFromDocument(data);
 }
 
 function createFinanceFromDocument(doc) {
     var finance = getFinance();
     var exists = finance.some(function(f) { return String(f.relacionadoA) === String(doc.id) && f.origem === 'Documento Fiscal'; });
     if (exists) {
-        showAdminToast('Receita jÃ¡ existe para este documento.', 'warning');
+        showAdminToast('Receita já existe para este documento.', 'warning');
         return;
     }
     finance.push({
         id: Date.now(),
         tipo: 'Receita',
-        categoria: doc.referenciaTipo === 'PEDIDO' ? 'Produto' : 'ServiÃ§o',
-        cat: doc.referenciaTipo === 'PEDIDO' ? 'Produto' : 'ServiÃ§o',
+        categoria: doc.referenciaTipo === 'PEDIDO' ? 'Produto' : 'Serviço',
+        cat: doc.referenciaTipo === 'PEDIDO' ? 'Produto' : 'Serviço',
         descricao: doc.tipoDocumento + ' - ' + doc.clienteNome,
         desc: doc.tipoDocumento + ' - ' + doc.clienteNome,
         valor: doc.valor,
@@ -2336,7 +2545,7 @@ function printFiscalDocument(doc) {
     var items = (doc.itens || []).map(function(item) {
         return '<tr><td>' + (item.descricao || item.nome || doc.descricao) + '</td><td>' + (item.quantidade || item.qty || 1) + '</td><td>' + formatBRL(item.valor || item.preco || doc.valor) + '</td></tr>';
     }).join('');
-    var html = '<html><head><title>' + doc.tipoDocumento + '</title><style>body{font-family:Arial;padding:24px;color:#111}.header{display:flex;justify-content:space-between;border-bottom:2px solid #0066ff;padding-bottom:12px}img{max-height:70px}table{width:100%;border-collapse:collapse;margin-top:20px}td,th{border:1px solid #ddd;padding:8px;text-align:left}.notice{margin-top:28px;font-size:12px;color:#555;border-top:1px solid #ddd;padding-top:12px}.sign{margin-top:48px;border-top:1px solid #111;width:260px;text-align:center;padding-top:8px}</style></head><body><div class="header"><div><h2>' + cfg.nomeEmpresa + '</h2><p>' + cfg.telefone + ' - ' + cfg.cidade + '/' + cfg.estado + '</p><p>CNPJ: ' + (cfg.cnpj || '-') + '</p></div><img src="' + cfg.logo + '"></div><h1>' + doc.tipoDocumento.replace(/_/g, ' ') + '</h1><p><strong>NÃºmero:</strong> ' + doc.numeroDocumento + '</p><p><strong>Cliente:</strong> ' + doc.clienteNome + ' - ' + (doc.clienteTelefone || '-') + '</p><p><strong>Data:</strong> ' + doc.dataEmissao.split('-').reverse().join('/') + '</p><table><thead><tr><th>DescriÃ§Ã£o</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>' + items + '</tbody></table><h2>Total: ' + formatBRL(doc.valor) + '</h2><p><strong>Pagamento:</strong> ' + (doc.formaPagamento || '-') + '</p><p><strong>ObservaÃ§Ãµes:</strong> ' + (doc.observacoes || '') + '</p><div class="sign">' + cfg.nomeEmpresa + '</div><div class="notice">' + INTERNAL_DOC_NOTICE + '</div></body></html>';
+    var html = '<html><head><title>' + doc.tipoDocumento + '</title><style>body{font-family:Arial;padding:24px;color:#111}.header{display:flex;justify-content:space-between;border-bottom:2px solid #0066ff;padding-bottom:12px}img{max-height:70px}table{width:100%;border-collapse:collapse;margin-top:20px}td,th{border:1px solid #ddd;padding:8px;text-align:left}.notice{margin-top:28px;font-size:12px;color:#555;border-top:1px solid #ddd;padding-top:12px}.sign{margin-top:48px;border-top:1px solid #111;width:260px;text-align:center;padding-top:8px}</style></head><body><div class="header"><div><h2>' + cfg.nomeEmpresa + '</h2><p>' + cfg.telefone + ' - ' + cfg.cidade + '/' + cfg.estado + '</p><p>CNPJ: ' + (cfg.cnpj || '-') + '</p></div><img src="' + cfg.logo + '"></div><h1>' + doc.tipoDocumento.replace(/_/g, ' ') + '</h1><p><strong>Número:</strong> ' + doc.numeroDocumento + '</p><p><strong>Cliente:</strong> ' + doc.clienteNome + ' - ' + (doc.clienteTelefone || '-') + '</p><p><strong>Data:</strong> ' + doc.dataEmissao.split('-').reverse().join('/') + '</p><table><thead><tr><th>Descrição</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>' + items + '</tbody></table><h2>Total: ' + formatBRL(doc.valor) + '</h2><p><strong>Pagamento:</strong> ' + (doc.formaPagamento || '-') + '</p><p><strong>Observações:</strong> ' + (doc.observacoes || '') + '</p><div class="sign">' + cfg.nomeEmpresa + '</div><div class="notice">' + INTERNAL_DOC_NOTICE + '</div></body></html>';
     var win = window.open('', '_blank');
     win.document.write(html);
     win.document.close();
@@ -2351,18 +2560,18 @@ function requestOfficialNotePrompt(seed) {
         clienteDocumento: prompt('CPF/CNPJ', seed.clienteDocumento || '') || '',
         clienteTelefone: prompt('Telefone', seed.clienteTelefone || '') || '',
         tipoNota: prompt('Tipo da nota (NFS-e, NF-e, NFC-e, Outro)', seed.tipoNota || 'NFS-e') || 'NFS-e',
-        descricao: prompt('DescriÃ§Ã£o', seed.descricao || '') || '',
+        descricao: prompt('Descrição', seed.descricao || '') || '',
         valor: parseFloat(prompt('Valor', seed.valor || '0')) || 0,
         dataSolicitacao: new Date().toISOString().slice(0, 10),
         status: seed.status || 'Solicitada',
-        numeroNota: seed.status === 'Emitida' ? (prompt('NÃºmero da nota', '') || '') : '',
-        codigoVerificacao: seed.status === 'Emitida' ? (prompt('CÃ³digo de verificaÃ§Ã£o', '') || '') : '',
+        numeroNota: seed.status === 'Emitida' ? (prompt('Número da nota', '') || '') : '',
+        codigoVerificacao: seed.status === 'Emitida' ? (prompt('Código de verificação', '') || '') : '',
         linkNota: seed.status === 'Emitida' ? (prompt('Link da nota', '') || '') : '',
         arquivoPdfUrl: '',
         arquivoXmlUrl: '',
         emitidaPor: seed.status === 'Emitida' ? (prompt('Emitida por', 'Portal externo') || '') : '',
-        dataEmissao: seed.status === 'Emitida' ? (prompt('Data de emissÃ£o (AAAA-MM-DD)', new Date().toISOString().slice(0, 10)) || '') : '',
-        observacoes: prompt('ObservaÃ§Ãµes', seed.observacoes || '') || '',
+        dataEmissao: seed.status === 'Emitida' ? (prompt('Data de emissão (AAAA-MM-DD)', new Date().toISOString().slice(0, 10)) || '') : '',
+        observacoes: prompt('Observações', seed.observacoes || '') || '',
         criadoEm: new Date().toISOString(),
         atualizadoEm: new Date().toISOString()
     };
@@ -2429,8 +2638,8 @@ window.editOfficialNoteData = function(id) {
     var notes = getOfficialNotes();
     var note = notes.find(function(n) { return String(n.id) === String(id); });
     if (!note) return;
-    note.numeroNota = prompt('NÃºmero da nota', note.numeroNota || '') || note.numeroNota || '';
-    note.codigoVerificacao = prompt('CÃ³digo de verificaÃ§Ã£o', note.codigoVerificacao || '') || note.codigoVerificacao || '';
+    note.numeroNota = prompt('Número da nota', note.numeroNota || '') || note.numeroNota || '';
+    note.codigoVerificacao = prompt('Código de verificação', note.codigoVerificacao || '') || note.codigoVerificacao || '';
     note.linkNota = prompt('Link da nota', note.linkNota || '') || note.linkNota || '';
     note.arquivoPdfUrl = prompt('URL do PDF', note.arquivoPdfUrl || '') || note.arquivoPdfUrl || '';
     note.arquivoXmlUrl = prompt('URL do XML', note.arquivoXmlUrl || '') || note.arquivoXmlUrl || '';
@@ -2448,12 +2657,12 @@ function renderCompanyConfigCard() {
     var btn = document.getElementById('btn-edit-company-config');
     if (btn) btn.onclick = function() {
         cfg.nomeEmpresa = prompt('Nome da empresa', cfg.nomeEmpresa) || cfg.nomeEmpresa;
-        cfg.responsavel = prompt('ResponsÃ¡vel', cfg.responsavel) || cfg.responsavel;
+        cfg.responsavel = prompt('Responsável', cfg.responsavel) || cfg.responsavel;
         cfg.cnpj = prompt('CNPJ', cfg.cnpj) || cfg.cnpj;
         cfg.telefone = prompt('Telefone', cfg.telefone) || cfg.telefone;
         cfg.whatsapp = prompt('WhatsApp', cfg.whatsapp) || cfg.whatsapp;
         cfg.email = prompt('E-mail', cfg.email) || cfg.email;
-        cfg.endereco = prompt('EndereÃ§o', cfg.endereco) || cfg.endereco;
+        cfg.endereco = prompt('Endereço', cfg.endereco) || cfg.endereco;
         cfg.cidade = prompt('Cidade', cfg.cidade) || cfg.cidade;
         cfg.estado = prompt('Estado', cfg.estado) || cfg.estado;
         cfg.logo = prompt('Logo', cfg.logo) || cfg.logo;
@@ -2476,19 +2685,19 @@ function renderMeiControl() {
     var avg = yearRevenue / (now.getMonth() + 1);
     var projection = avg * 12;
     var alert = pct >= 100 ? 'Atingiu 100% do limite anual' : (pct >= 80 ? 'Atingiu 80% do limite anual' : (pct >= 50 ? 'Atingiu 50% do limite anual' : 'Dentro do limite'));
-    if (projection > cfg.limiteMeiAnual) alert += ' | ProjeÃ§Ã£o anual acima do limite';
+    if (projection > cfg.limiteMeiAnual) alert += ' | Projeção anual acima do limite';
     el.innerHTML =
-        '<div class="stat-card"><span class="stat-number">' + formatBRL(monthRevenue) + '</span><span class="stat-label">Faturamento do mÃªs</span></div>' +
+        '<div class="stat-card"><span class="stat-number">' + formatBRL(monthRevenue) + '</span><span class="stat-label">Faturamento do mês</span></div>' +
         '<div class="stat-card"><span class="stat-number">' + formatBRL(yearRevenue) + '</span><span class="stat-label">Faturamento do ano</span></div>' +
         '<div class="stat-card"><span class="stat-number">' + formatBRL(cfg.limiteMeiAnual) + '</span><span class="stat-label">Limite MEI</span></div>' +
         '<div class="stat-card"><span class="stat-number">' + pct.toFixed(1) + '%</span><span class="stat-label">Uso do limite</span></div>' +
-        '<div class="stat-card"><span class="stat-number">' + formatBRL(avg) + '</span><span class="stat-label">MÃ©dia mensal</span></div>' +
-        '<div class="stat-card"><span class="stat-number">' + formatBRL(projection) + '</span><span class="stat-label">ProjeÃ§Ã£o anual</span></div>' +
+        '<div class="stat-card"><span class="stat-number">' + formatBRL(avg) + '</span><span class="stat-label">Média mensal</span></div>' +
+        '<div class="stat-card"><span class="stat-number">' + formatBRL(projection) + '</span><span class="stat-label">Projeção anual</span></div>' +
         '<div class="admin-alert ' + (pct >= 80 || projection > cfg.limiteMeiAnual ? 'alert-danger' : 'alert-warning') + '">' + alert + '</div>';
 }
 
 function emitirNotaOficialViaAPI(dadosNota) {
-    return 'FunÃ§Ã£o reservada para integraÃ§Ã£o futura com API fiscal.';
+    return 'Função reservada para integração futura com API fiscal.';
 }
 
 // Backup
@@ -2563,7 +2772,7 @@ function initBackupSystem() {
     }
 }
 
-// Socios
+// Sócios
 function initKaosSystem() {
     var btnAddItem = document.getElementById('btn-nf-add-item');
     if (btnAddItem) btnAddItem.onclick = addNfItemRow;
@@ -2589,7 +2798,7 @@ function addNfItemRow() {
     }
     var row = document.createElement('div');
     row.className = 'nf-item-row';
-    row.innerHTML = '<div class="form-group"><label>Produto</label><select class="nf-item-select">' + options + '</select></div><div class="form-group"><label>Qtd</label><input type="number" class="nf-item-qty" value="1" min="1"></div><div class="form-group"><label>PreÃ§o</label><input type="number" class="nf-item-price" step="0.01" value="0"></div><div class="form-group"><label>Subtotal</label><input type="text" class="nf-item-subtotal" readonly></div><button type="button" class="btn-remove-item"><i class="fas fa-trash"></i></button>';
+    row.innerHTML = '<div class="form-group"><label>Produto</label><select class="nf-item-select">' + options + '</select></div><div class="form-group"><label>Qtd</label><input type="number" class="nf-item-qty" value="1" min="1"></div><div class="form-group"><label>Preço</label><input type="number" class="nf-item-price" step="0.01" value="0"></div><div class="form-group"><label>Subtotal</label><input type="text" class="nf-item-subtotal" readonly></div><button type="button" class="btn-remove-item"><i class="fas fa-trash"></i></button>';
     
     var sel = row.querySelector('.nf-item-select');
     var pr = row.querySelector('.nf-item-price');
@@ -2645,11 +2854,11 @@ function generateNFAsPDF() {
         '</head>\n' +
         '<body>\n' +
         '<div class="header">\n' +
-        '    <div class="company"><h2>KB Tech</h2><p>CNPJ: 55.452.123/0001-89</p><p>PetrÃ³polis, RJ</p></div>\n' +
+        '    <div class="company"><h2>KB Tech</h2><p>CNPJ: 55.452.123/0001-89</p><p>Petrópolis, RJ</p></div>\n' +
         '    <div class="title"><h1>NOTA FISCAL</h1><p>Data: ' + new Date().toLocaleDateString() + '</p></div>\n' +
         '</div>\n' +
         '<div><strong>Cliente:</strong> ' + clienteNome + '<br><strong>CPF/CNPJ:</strong> ' + clienteDoc + '</div>\n' +
-        '<table><thead><tr><th>Produto</th><th>Qtd</th><th>UnitÃ¡rio</th><th>Total</th></tr></thead>\n' +
+        '<table><thead><tr><th>Produto</th><th>Qtd</th><th>Unitário</th><th>Total</th></tr></thead>\n' +
         '<tbody>' + (itemsHtml || '<tr><td colspan="4">Nenhum produto</td></tr>') + '</tbody>\n' +
         '<tfoot><tr><td colspan="3" style="text-align:right"><strong>TOTAL:</strong></td><td><strong>R$ ' + total.toFixed(2).replace('.', ',') + '</strong></td></tr></tfoot>\n' +
         '</table>\n' +
@@ -2670,10 +2879,10 @@ function generateNFAsPDF() {
 function initResetCatalog() { 
     var btn = document.getElementById('btn-reset-catalog'); 
     if (btn) btn.onclick = function() { 
-        if (confirm('Restaurar catÃ¡logo original?')) { 
+        if (confirm('Restaurar catálogo original?')) { 
             resetProducts(); 
             renderAdminProducts(); 
-            showAdminToast('CatÃ¡logo restaurado!'); 
+            showAdminToast('Catálogo restaurado!'); 
         } 
     }; 
 }
@@ -2705,7 +2914,7 @@ function convertToOS(quoteId) {
             id: Date.now(), 
             customerId: q.customerId, 
             data: new Date().toISOString().split('T')[0], 
-            equipamento: 'Equipamento do OrÃ§amento', 
+            equipamento: 'Equipamento do Orçamento', 
             status: 'Aberto', 
             defeito: q.itens || '', 
             laudo: '', 
@@ -2716,7 +2925,7 @@ function convertToOS(quoteId) {
         }); 
         saveOS(os); 
         renderOS(); 
-        showAdminToast('OrÃ§amento convertido em OS!'); 
+        showAdminToast('Orçamento convertido em OS!'); 
     } 
 }
 
@@ -2754,7 +2963,7 @@ function editQuote(id) {
 }
 
 function deleteQuote(id) { 
-    if (confirm('Excluir orÃ§amento?')) { 
+    if (confirm('Excluir orçamento?')) {
         var quotes = getQuotes();
         var newQuotes = [];
         for (var i = 0; i < quotes.length; i++) {
@@ -2764,12 +2973,12 @@ function deleteQuote(id) {
         }
         saveQuotes(newQuotes); 
         renderQuotes(); 
-        showAdminToast('OrÃ§amento excluÃ­do!'); 
+        showAdminToast('Orçamento excluído!'); 
     } 
 }
 
 function deleteFinance(id) { 
-    if (confirm('Excluir lanÃ§amento?')) { 
+    if (confirm('Excluir lançamento?')) { 
         var finance = getFinance();
         var newFinance = [];
         for (var i = 0; i < finance.length; i++) {
@@ -2791,7 +3000,7 @@ window.editFinance = function(id) {
     if (!item) return;
     var modal = document.getElementById('finance-modal');
     var overlay = document.getElementById('overlay');
-    document.getElementById('finance-modal-title').textContent = 'Editar LanÃ§amento';
+    document.getElementById('finance-modal-title').textContent = 'Editar Lançamento';
     document.getElementById('fin-id').value = item.id;
     document.getElementById('fin-tipo').value = item.tipo;
     if (window.setFinanceCategories) window.setFinanceCategories(item.tipo, item.categoria || item.cat);
@@ -2827,7 +3036,7 @@ window.editDocumentNotes = function(id) {
     var docs = getDocuments();
     docs.forEach(function(doc) {
         if (String(doc.id) === String(id)) {
-            doc.observacoes = prompt('ObservaÃ§Ãµes', doc.observacoes || '') || doc.observacoes;
+            doc.observacoes = prompt('Observações', doc.observacoes || '') || doc.observacoes;
             doc.atualizadoEm = new Date().toISOString();
         }
     });
@@ -2836,7 +3045,7 @@ window.editDocumentNotes = function(id) {
 };
 
 window.deleteDocumentRecord = function(id) {
-    if (!confirm('Excluir este documento do histÃ³rico?')) return;
+    if (!confirm('Excluir este documento do histórico?')) return;
     saveDocuments(getDocuments().filter(function(doc) { return String(doc.id) !== String(id); }));
     renderDocuments();
 };
@@ -2900,7 +3109,7 @@ function initQuoteModal() {
         saveQuotes(quotes);
         closeModal();
         renderQuotes();
-        showAdminToast('OrÃ§amento salvo!');
+        showAdminToast('Orçamento salvo!');
     };
 }
 
@@ -2997,7 +3206,7 @@ function initFinanceModal() {
         saveFinance(finance);
         closeModal();
         renderFinance();
-        showAdminToast('LanÃ§amento salvo!');
+        showAdminToast('Lançamento salvo!');
     };
 }
 
@@ -3052,10 +3261,10 @@ function ensureFinanceSummaryBlocks() {
     var html = document.createElement('div');
     html.innerHTML =
         '<div class="admin-search-bar finance-filter-bar">' +
-        '<select id="finance-filter"><option value="today">Hoje</option><option value="week">Semana</option><option value="month" selected>MÃªs</option><option value="year">Ano</option><option value="custom">PerÃ­odo personalizado</option></select>' +
+        '<select id="finance-filter"><option value="today">Hoje</option><option value="week">Semana</option><option value="month" selected>Mês</option><option value="year">Ano</option><option value="custom">Período personalizado</option></select>' +
         '<input type="date" id="finance-start"><input type="date" id="finance-end">' +
         '<button id="btn-apply-finance" class="btn-secondary">Aplicar</button>' +
-        '<button id="btn-finance-report" class="btn-primary">Gerar RelatÃ³rio</button>' +
+        '<button id="btn-finance-report" class="btn-primary">Gerar Relatório</button>' +
         '<button id="btn-finance-export" class="btn-secondary">Exportar JSON</button>' +
         '</div>' +
         '<div class="dashboard-row">' +
@@ -3063,10 +3272,10 @@ function ensureFinanceSummaryBlocks() {
         '<div class="dashboard-col"><h3><i class="fas fa-arrow-down"></i> Despesas por Categoria</h3><div id="finance-expense-categories" class="finance-summary-list"></div></div>' +
         '</div>' +
         '<div class="admin-stats">' +
-        '<div class="stat-card"><span class="stat-number" id="fin-investido">R$ 0,00</span><span class="stat-label">Investido na Empresa</span></div>' +
+        '<div class="stat-card"><span class="stat-number" id="fin-investido">R$ 0,00</span><span class="stat-label">Estoque Físico</span></div>' +
         '<div class="stat-card"><span class="stat-number" id="fin-saldo">R$ 0,00</span><span class="stat-label">Saldo Estimado</span></div>' +
-        '<div class="stat-card"><span class="stat-number" id="fin-ticket">R$ 0,00</span><span class="stat-label">Ticket Medio</span></div>' +
-        '<div class="stat-card"><span class="stat-number" id="fin-servicos">0</span><span class="stat-label">ServiÃ§os Realizados</span></div>' +
+        '<div class="stat-card"><span class="stat-number" id="fin-ticket">R$ 0,00</span><span class="stat-label">Ticket Médio</span></div>' +
+        '<div class="stat-card"><span class="stat-number" id="fin-servicos">0</span><span class="stat-label">Serviços Realizados</span></div>' +
         '<div class="stat-card"><span class="stat-number" id="fin-produtos-vendidos">0</span><span class="stat-label">Produtos Vendidos</span></div>' +
         '</div>';
     while (html.firstChild) wrapper.parentNode.insertBefore(html.firstChild, wrapper);
@@ -3079,7 +3288,7 @@ function ensureReportsTab() {
         var btn = document.createElement('button');
         btn.className = 'admin-nav-btn';
         btn.setAttribute('data-tab', 'reports');
-        btn.innerHTML = '<i class="fas fa-chart-pie"></i> Relatorios';
+        btn.innerHTML = '<i class="fas fa-chart-pie"></i> Relatórios';
         var backupBtn = document.querySelector('[data-tab="backup"]');
         nav.insertBefore(btn, backupBtn || null);
     }
@@ -3089,8 +3298,8 @@ function ensureReportsTab() {
     tab.id = 'tab-reports';
     tab.className = 'admin-tab';
     tab.innerHTML =
-        '<div class="admin-tab-header"><h1><i class="fas fa-chart-pie"></i> Relatorios</h1><button id="btn-export-report" class="btn-primary"><i class="fas fa-file-download"></i> Exportar Relatorio</button></div>' +
-        '<div class="admin-search-bar"><select id="report-filter"><option value="today">Hoje</option><option value="week">Semana</option><option value="month" selected>Mes</option><option value="year">Ano</option><option value="custom">Periodo personalizado</option></select><input type="date" id="report-start"><input type="date" id="report-end"><button id="btn-apply-report" class="btn-secondary">Aplicar</button></div>' +
+        '<div class="admin-tab-header"><h1><i class="fas fa-chart-pie"></i> Relatórios</h1><button id="btn-export-report" class="btn-primary"><i class="fas fa-file-download"></i> Exportar Relatório</button></div>' +
+        '<div class="admin-search-bar"><select id="report-filter"><option value="today">Hoje</option><option value="week">Semana</option><option value="month" selected>Mês</option><option value="year">Ano</option><option value="custom">Período personalizado</option></select><input type="date" id="report-start"><input type="date" id="report-end"><button id="btn-apply-report" class="btn-secondary">Aplicar</button></div>' +
         '<div class="admin-stats"><div class="stat-card"><span class="stat-number" id="rep-receitas">R$ 0,00</span><span class="stat-label">Receitas</span></div><div class="stat-card"><span class="stat-number" id="rep-despesas">R$ 0,00</span><span class="stat-label">Despesas</span></div><div class="stat-card"><span class="stat-number" id="rep-lucro">R$ 0,00</span><span class="stat-label">Lucro</span></div><div class="stat-card"><span class="stat-number" id="rep-os">0</span><span class="stat-label">OS</span></div><div class="stat-card"><span class="stat-number" id="rep-garantias">0</span><span class="stat-label">Garantias</span></div><div class="stat-card"><span class="stat-number" id="rep-clientes">0</span><span class="stat-label">Clientes</span></div><div class="stat-card"><span class="stat-number" id="rep-produtos">0</span><span class="stat-label">Produtos</span></div></div>' +
         '<div class="admin-table-wrapper"><table class="admin-table"><thead><tr><th>Modulo</th><th>Resumo</th><th>Valor</th></tr></thead><tbody id="reports-list"></tbody></table></div>';
     var backup = document.getElementById('tab-backup');
@@ -3117,7 +3326,7 @@ function ensureFinanceModalFields() {
         '<div class="form-group"><label>Fornecedor</label><input type="text" id="fin-fornecedor" placeholder="Fornecedor da despesa"></div>' +
         '</div>' +
         '<label class="checkbox-label"><input type="checkbox" id="fin-recorrente"><span>Despesa recorrente</span></label>' +
-        '<div class="form-group"><label>Observacoes</label><textarea id="fin-obs" rows="2" placeholder="Ex: ChatGPT Pro R$100, dominio R$60, peca R$180, anuncio Instagram R$50"></textarea></div>';
+        '<div class="form-group"><label>Observações</label><textarea id="fin-obs" rows="2" placeholder="Ex: ChatGPT Pro R$100, dominio R$60, peca R$180, anuncio Instagram R$50"></textarea></div>';
     while (extra.firstChild) modalBody.appendChild(extra.firstChild);
 }
 
@@ -3170,7 +3379,7 @@ function inRange(value, range) {
 
 function countServicesInRange(range) {
     return getOS().filter(function(o) {
-        var done = o.status === 'Entregue' || o.status === 'Pronto' || o.status === 'ConcluÃ­do';
+        var done = o.status === 'Entregue' || o.status === 'Pronto' || o.status === 'Concluído';
         return done && inRange(o.dataConclusao || o.data || o.dataEntrada, range);
     }).length;
 }
@@ -3200,14 +3409,14 @@ function buildFinanceReport() {
     var items = getFinance().filter(function(f) { return inRange(f.data, range); });
     var receitas = items.filter(function(f) { return f.tipo === 'Receita'; }).reduce(function(a, f) { return a + f.valor; }, 0);
     var despesas = items.filter(function(f) { return f.tipo === 'Despesa'; }).reduce(function(a, f) { return a + f.valor; }, 0);
-    var invested = getProducts().reduce(function(acc, p) { return acc + ((parseFloat(p.precoCusto || p.custo) || 0) * (parseFloat(p.estoque) || 0)); }, 0);
+    var invested = getInventoryInvestment();
     return {
         periodo: range,
         receitas: receitas,
         despesas: despesas,
         lucroLiquido: receitas - despesas,
         totalInvestido: invested,
-        saldoEstimado: (receitas - despesas) - invested,
+        saldoEstimado: receitas - despesas,
         ticketMedio: items.filter(function(f) { return f.tipo === 'Receita'; }).length ? receitas / items.filter(function(f) { return f.tipo === 'Receita'; }).length : 0,
         servicosRealizados: countServicesInRange(range),
         produtosVendidos: countProductsSoldInRange(range),
@@ -3287,7 +3496,7 @@ function initFinanceFilters() {
     if (filter) filter.onchange = renderFinance;
     if (reportBtn) reportBtn.onclick = function() {
         var report = buildFinanceReport();
-        showAdminToast('RelatÃ³rio financeiro gerado.');
+        showAdminToast('Relatório financeiro gerado.');
         exportJsonFile('relatorio_financeiro_kos_' + new Date().toISOString().slice(0, 10) + '.json', report);
     };
     if (exportBtn) exportBtn.onclick = function() {
@@ -3321,13 +3530,13 @@ function renderFinance() {
     }
     var ticketBase = periodItems.filter(function(f) { return f.tipo === 'Receita'; });
     var ticket = ticketBase.length ? totalReceitas / ticketBase.length : 0;
-    var invested = getProducts().reduce(function(acc, p) { return acc + ((parseFloat(p.precoCusto || p.custo) || 0) * (parseFloat(p.estoque) || 0)); }, 0);
+    var invested = getInventoryInvestment();
     var fields = {
         'fin-receitas': formatBRL(totalReceitas),
         'fin-despesas': formatBRL(totalDespesas),
         'fin-lucro': formatBRL(totalReceitas - totalDespesas),
         'fin-investido': formatBRL(invested),
-        'fin-saldo': formatBRL((totalReceitas - totalDespesas) - invested),
+        'fin-saldo': formatBRL(totalReceitas - totalDespesas),
         'fin-ticket': formatBRL(ticket),
         'fin-servicos': countServicesInRange(range),
         'fin-produtos-vendidos': countProductsSoldInRange(range)
@@ -3349,9 +3558,13 @@ function renderDashboard() {
     var purchases = getSupplierPurchases();
     var receitasMes = finance.filter(function(f) { return f.tipo === 'Receita' && isInCurrentMonth(f.data); }).reduce(function(a, f) { return a + (parseFloat(f.valor) || 0); }, 0);
     var despesasMes = finance.filter(function(f) { return f.tipo !== 'Receita' && isInCurrentMonth(f.data); }).reduce(function(a, f) { return a + (parseFloat(f.valor) || 0); }, 0);
-    var osAbertas = os.filter(function(o) { return o.status === 'Aberto' || o.status === 'Em AnÃ¡lise' || o.status === 'Aguardando PeÃ§a'; }).length;
-    var estoqueBaixo = products.filter(function(p) { return p.estoque <= (p.estoqueMin || p.estoqueMinimo || 5); }).length;
-    var invested = products.reduce(function(acc, p) { return acc + ((parseFloat(p.custo) || parseFloat(p.precoCusto) || 0) * (parseFloat(p.estoque) || 0)); }, 0);
+    var osAbertas = os.filter(function(o) { return o.status === 'Aberto' || o.status === 'Em Análise' || o.status === 'Aguardando Peça'; }).length;
+    var estoqueBaixo = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.estoque <= (p.estoqueMin || p.estoqueMinimo || 5); }).length;
+    var semEstoque = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= 0; }).length;
+    var semFornecedor = products.filter(function(p) { return p.ativo !== false && !isControlProduct(p) && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); }).length;
+    var aguardandoReposicao = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= (parseInt(p.estoqueMinimo || p.estoqueMin) || 1); }).length;
+    var comprasPendentes = purchases.filter(function(c) { return c.status !== 'Recebido' && c.status !== 'Cancelado'; }).length;
+    var invested = getInventoryInvestment();
     var revenueItems = finance.filter(function(f) { return f.tipo === 'Receita' && isInCurrentMonth(f.data); });
     var ticket = revenueItems.length ? receitasMes / revenueItems.length : 0;
     var fields = {
@@ -3385,9 +3598,9 @@ function renderDashboard() {
 
     var alerts = document.getElementById('dash-notifications');
     if (alerts) {
-        var low = products.filter(function(p) { return p.ativo !== false && p.estoque > 0 && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5); });
-        var zero = products.filter(function(p) { return p.ativo !== false && p.estoque <= 0; });
-        var noSupplier = products.filter(function(p) { return p.ativo !== false && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); });
+        var low = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque > 0 && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5); });
+        var zero = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque <= 0; });
+        var noSupplier = products.filter(function(p) { return p.ativo !== false && !isControlProduct(p) && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); });
         var html = '';
         if (zero.length) html += '<div class="admin-alert alert-danger"><strong>Estoque zerado:</strong> ' + zero.map(function(p) { return p.nome; }).slice(0, 5).join(', ') + (zero.length > 5 ? '...' : '') + '<br>' + zero.slice(0, 3).map(function(p) { return '<button class="btn-secondary" onclick="requestSupplierOrder(' + p.id + ')">Pedir reposicao</button>'; }).join(' ') + '</div>';
         if (low.length) html += '<div class="admin-alert alert-warning"><strong>Estoque baixo:</strong> ' + low.map(function(p) { return p.nome; }).slice(0, 5).join(', ') + (low.length > 5 ? '...' : '') + '<br>' + low.slice(0, 3).map(function(p) { return '<button class="btn-secondary" onclick="requestSupplierOrder(' + p.id + ')">Pedir reposicao</button>'; }).join(' ') + '</div>';
