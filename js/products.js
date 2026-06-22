@@ -11,6 +11,7 @@ var TECNOCELL_SUPPLIER_ID = 'tecnocell';
 var TECNOCELL_SUPPLIER_NAME = 'Tecnocell';
 var TECNOCELL_SUPPLIER_PHONE = '(24) 99826-6051';
 var publicProductsLoadedFromFirebase = false;
+var PRODUCT_PLACEHOLDER_IMAGE = 'img/produto-placeholder.svg';
 
 // ── Catálogo inicial ──────────────────────────────────────────
 var initialProducts = [
@@ -1596,45 +1597,143 @@ function resetProducts() {
     if (window.KOSData) window.KOSData.saveCollection('products', normalized);
 }
 
+function roundCommercialPrice(value) {
+    value = parseFloat(value) || 0;
+    if (value <= 0) return 0;
+    var step = value < 60 ? 10 : value < 250 ? 20 : value < 1200 ? 50 : 100;
+    return Math.max(9.9, Math.ceil(value / step) * step - 0.1);
+}
+
+function defaultProductMargin(category, product) {
+    var text = String([category, product && product.nome, product && product.modelo, product && product.especificacao].join(' ')).toLowerCase();
+    if (/celular|smartphone|poco|redmi|realme|iphone|galaxy/.test(text)) return 15;
+    if (/tablet|redmi pad|ipad/.test(text)) return 15;
+    if (/echo|alexa|smart home|fire tv|tv stick|streaming|mi tv/.test(text)) return 20;
+    if (/ssd|hd externo|armazenamento/.test(text)) return 25;
+    if (/pendrive|pen drive|cartao|cartão|memoria|memória|microsd/.test(text)) return 30;
+    return 30;
+}
+
+function getMarketReferencePrice(product) {
+    var text = String([
+        product && product.nome,
+        product && product.fabricante,
+        product && product.marca,
+        product && product.modelo,
+        product && product.especificacao,
+        product && product.categoria
+    ].join(' ')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    if (/echo dot/.test(text) && /5/.test(text)) return 459.90;
+    if (/echo pop/.test(text)) return 249.90;
+    if (/fire tv/.test(text) && /4k/.test(text)) return 399.90;
+    if (/fire tv/.test(text)) return 349.90;
+    if (/mi tv stick|xiaomi tv stick/.test(text)) return 599.90;
+
+    if (/poco x7 pro/.test(text) && /512/.test(text)) return 2999.90;
+    if (/poco x7 pro/.test(text)) return 2699.90;
+    if (/redmi 15c/.test(text) && /256/.test(text)) return 1399.90;
+    if (/realme c71/.test(text)) return 1199.90;
+    if (/redmi pad/.test(text)) return 1299.90;
+
+    if (/kingston/.test(text) && /a400/.test(text) && /240/.test(text)) return 229.90;
+    if (/ssd/.test(text) && /240/.test(text)) return 199.90;
+    if (/ssd/.test(text) && /480|500|512/.test(text)) return 349.90;
+    if (/ssd/.test(text) && /960|1tb|1 tb/.test(text)) return 549.90;
+
+    if (/sandisk|kingston|multilaser/.test(text) && /pendrive|pen drive/.test(text) && /128/.test(text)) return 89.90;
+    if (/pendrive|pen drive/.test(text) && /128/.test(text)) return 79.90;
+    if (/pendrive|pen drive/.test(text) && /64/.test(text)) return 49.90;
+    if (/pendrive|pen drive/.test(text) && /32/.test(text)) return 34.90;
+    if (/microsd|micro sd|cartao|cartão/.test(text) && /128/.test(text)) return 99.90;
+    if (/microsd|micro sd|cartao|cartão/.test(text) && /64/.test(text)) return 59.90;
+    if (/microsd|micro sd|cartao|cartão/.test(text) && /32/.test(text)) return 39.90;
+
+    if (/logitech/.test(text) && /m170/.test(text)) return 79.90;
+    if (/baofeng/.test(text) && /777/.test(text)) return 149.90;
+
+    return 0;
+}
+
+function calculateFairSalePrice(product) {
+    product = product || {};
+    var base = parseFloat(product.precoFornecedor || product.custoFornecedor || product.precoCusto || product.custo || product.precoVenda || product.preco) || 0;
+    if (base <= 0) return parseFloat(product.precoVenda || product.preco) || 0;
+    var margin = parseFloat(product.margem) || defaultProductMargin(product.categoria, product);
+    var marginPrice = base * (1 + margin / 100);
+    var reference = getMarketReferencePrice(product);
+    if (reference > 0 && reference >= marginPrice) return reference;
+    var candidate = reference > 0 ? Math.max(reference, marginPrice) : marginPrice;
+    return roundCommercialPrice(candidate);
+}
+
+function shouldAutoPriceProduct(product, currentSale, baseCost) {
+    if (!product) return false;
+    if (baseCost <= 0) return false;
+    if (currentSale <= 0) return true;
+    if (currentSale <= baseCost + 0.01) return true;
+    if (product.tipoEstoque === 'fornecedor local' && Math.abs(currentSale - baseCost) <= 1) return true;
+    return false;
+}
+
 function normalizeProduct(p) {
     p = p || {};
     var precoVenda = parseFloat(p.precoVenda !== undefined ? p.precoVenda : p.preco) || 0;
     var precoCusto = parseFloat(p.precoCusto !== undefined ? p.precoCusto : p.custo) || 0;
+    var precoFornecedor = parseFloat(p.precoFornecedor !== undefined ? p.precoFornecedor : (p.custoFornecedor !== undefined ? p.custoFornecedor : precoCusto)) || 0;
     var estoqueMinimo = parseInt(p.estoqueMinimo !== undefined ? p.estoqueMinimo : p.estoqueMin) || 5;
     var lucro = precoVenda - precoCusto;
     var margem = precoVenda > 0 ? (lucro / precoVenda) * 100 : 0;
     var created = p.criadoEm || p.createdAt || new Date().toISOString();
     var isControlProduct = /controle/i.test(String(p.categoria || '')) || /controle/i.test(String(p.nome || ''));
+    var tipoEstoque = p.tipoEstoque || (p.dropshipping ? 'fornecedor local' : 'estoque proprio');
+    var statusDisponibilidade = p.statusDisponibilidade || '';
+    var isSupplierLocalProduct = /fornecedor|sob consulta|consulta/i.test(String(tipoEstoque + ' ' + statusDisponibilidade));
+    var baseCost = precoFornecedor || parseFloat(p.custoFornecedor) || precoCusto;
+    var hasSupplierCost = precoFornecedor > 0 || parseFloat(p.custoFornecedor) > 0;
+    if ((isSupplierLocalProduct || hasSupplierCost) && shouldAutoPriceProduct(p, precoVenda, baseCost)) {
+        precoVenda = calculateFairSalePrice(Object.assign({}, p, {
+            precoFornecedor: precoFornecedor || baseCost,
+            custoFornecedor: p.custoFornecedor || baseCost,
+            precoCusto: precoCusto || baseCost,
+            tipoEstoque: tipoEstoque
+        }));
+    }
     var defaultSupplier = isControlProduct ? {
         fornecedor: p.fornecedor || '',
         fornecedorPrincipalNome: p.fornecedorPrincipalNome || p.fornecedor || '',
         fornecedorWhatsapp: p.fornecedorWhatsapp || ''
     } : {
-        fornecedor: TECNOCELL_SUPPLIER_NAME,
-        fornecedorPrincipalNome: TECNOCELL_SUPPLIER_NAME,
-        fornecedorWhatsapp: TECNOCELL_SUPPLIER_PHONE
+        fornecedor: p.fornecedor || p.fornecedorPrincipalNome || TECNOCELL_SUPPLIER_NAME,
+        fornecedorPrincipalNome: p.fornecedorPrincipalNome || p.fornecedor || TECNOCELL_SUPPLIER_NAME,
+        fornecedorWhatsapp: p.fornecedorWhatsapp || TECNOCELL_SUPPLIER_PHONE
     };
-    var supplierId = isControlProduct ? (p.fornecedorPrincipalId || '') : TECNOCELL_SUPPLIER_ID;
+    var supplierId = p.fornecedorPrincipalId || (isControlProduct ? '' : TECNOCELL_SUPPLIER_ID);
     return Object.assign({}, p, {
         id: p.id || Date.now(),
         nome: p.nome || '',
+        fabricante: p.fabricante || p.marca || '',
         marca: p.marca || '',
         modelo: p.modelo || '',
         categoria: p.categoria || 'Outro',
         descricao: p.descricao || '',
+        especificacao: p.especificacao || p.especificação || '',
         precoCusto: precoCusto,
         precoVenda: precoVenda,
+        precoFornecedor: precoFornecedor,
         precoReferenciaMin: parseFloat(p.precoReferenciaMin) || 0,
         precoReferenciaMax: parseFloat(p.precoReferenciaMax) || 0,
         lucro: parseFloat(p.lucro !== undefined ? p.lucro : lucro) || 0,
         margem: parseFloat(p.margem !== undefined ? p.margem : margem) || 0,
         preco: precoVenda,
         custo: precoCusto,
-        estoque: KOS_DROPSHIP_MODE ? 0 : (parseInt(p.estoque) || 0),
+        estoque: (KOS_DROPSHIP_MODE || isSupplierLocalProduct) ? 0 : (parseInt(p.estoque) || 0),
         estoqueMinimo: estoqueMinimo,
         estoqueMin: estoqueMinimo,
-        dropshipping: KOS_DROPSHIP_MODE || !!p.dropshipping,
-        imagem: p.imagem || 'https://placehold.co/400',
+        tipoEstoque: tipoEstoque,
+        statusDisponibilidade: statusDisponibilidade || (isSupplierLocalProduct ? 'Consultar disponibilidade' : ''),
+        dropshipping: KOS_DROPSHIP_MODE || !!p.dropshipping || isSupplierLocalProduct,
+        imagem: p.imagem || PRODUCT_PLACEHOLDER_IMAGE,
         imagensExtras: Array.isArray(p.imagensExtras) ? p.imagensExtras : [],
         alt: p.alt || (p.nome ? p.nome + ' vendido pela KB Tech em Petropolis' : 'Produto vendido pela KB Tech em Petropolis'),
         fornecedor: defaultSupplier.fornecedor,
@@ -1643,7 +1742,7 @@ function normalizeProduct(p) {
         fornecedorWhatsapp: defaultSupplier.fornecedorWhatsapp,
         codigoFornecedor: p.codigoFornecedor || '',
         linkFornecedor: p.linkFornecedor || '',
-        custoFornecedor: parseFloat(p.custoFornecedor) || 0,
+        custoFornecedor: parseFloat(p.custoFornecedor) || precoFornecedor,
         prazoReposicao: p.prazoReposicao || '',
         ativo: p.ativo !== false,
         destaque: !!p.destaque,
@@ -1661,20 +1760,32 @@ function normalizeProducts(products) {
     return (products || []).map(normalizeProduct);
 }
 
+function isConsultProduct(product) {
+    if (!product) return false;
+    var type = String(product.tipoEstoque || '').toLowerCase();
+    var status = String(product.statusDisponibilidade || '').toLowerCase();
+    return product.dropshipping || type.indexOf('fornecedor') !== -1 || status.indexOf('consulta') !== -1 || status.indexOf('consultar') !== -1;
+}
+
 function getPublicProducts() {
     return getProducts()
-        .filter(function(p) { return p.ativo !== false && (KOS_DROPSHIP_MODE || (parseInt(p.estoque) || 0) > 0); })
+        .filter(function(p) { return p.ativo !== false && (isConsultProduct(p) || (parseInt(p.estoque) || 0) > 0); })
         .map(function(p) {
             return {
                 id: p.id,
                 nome: p.nome,
+                fabricante: p.fabricante || p.marca || '',
                 marca: p.marca || '',
                 modelo: p.modelo || '',
                 categoria: p.categoria,
                 descricao: p.descricao || '',
+                especificacao: p.especificacao || '',
                 preco: p.precoVenda,
                 precoVenda: p.precoVenda,
                 estoque: p.estoque,
+                tipoEstoque: p.tipoEstoque || '',
+                statusDisponibilidade: p.statusDisponibilidade || '',
+                dropshipping: !!p.dropshipping,
                 imagem: p.imagem,
                 alt: p.alt || p.nome,
                 ativo: p.ativo,

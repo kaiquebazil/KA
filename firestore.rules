@@ -44,6 +44,15 @@ service cloud.firestore {
       allow write: if signedIn();
     }
 
+    match /treinamentos/{docId} {
+      allow read: if signedIn() || resource.data.ativo == true;
+      allow write: if signedIn();
+    }
+
+    match /progressoTreinamentos/{docId} {
+      allow read, write: if signedIn();
+    }
+
     match /movimentacoesEstoque/{docId} {
       allow read, write: if signedIn();
     }

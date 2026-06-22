@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.KBTechMenuInitialized) return;
+    window.KBTechMenuInitialized = true;
+
     var menuToggle = document.getElementById('menu-toggle');
     var navMenu = document.getElementById('nav-menu');
     var closeMenuBtn = document.getElementById('close-menu');
@@ -10,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         navMenu.classList.add('active');
         document.body.classList.add('menu-open');
         menuToggle.setAttribute('aria-expanded', 'true');
+        menuToggle.setAttribute('aria-label', 'Fechar menu');
         if (overlay) overlay.classList.add('active');
     }
 
@@ -18,11 +22,16 @@ document.addEventListener('DOMContentLoaded', function() {
         navMenu.classList.remove('active');
         document.body.classList.remove('menu-open');
         menuToggle.setAttribute('aria-expanded', 'false');
+        menuToggle.setAttribute('aria-label', 'Abrir menu');
         if (overlay) overlay.classList.remove('active');
     }
 
     menuToggle.setAttribute('aria-expanded', 'false');
-    menuToggle.addEventListener('click', openMenu);
+    menuToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (navMenu.classList.contains('active')) closeMenu();
+        else openMenu();
+    });
 
     if (closeMenuBtn) {
         closeMenuBtn.addEventListener('click', closeMenu);
@@ -45,5 +54,9 @@ document.addEventListener('DOMContentLoaded', function() {
             closeMenu();
             menuToggle.focus();
         }
+    });
+
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 900 && navMenu.classList.contains('active')) closeMenu();
     });
 });

@@ -22,6 +22,10 @@ function addToCart(productId, quantity) {
     const products = getProducts();
     const product = products.find(function(p) { return String(p.id) === String(productId); });
     if (!product) return false;
+    if (typeof isConsultProduct === 'function' && isConsultProduct(product)) {
+        showToast('Consulte disponibilidade pelo WhatsApp antes de comprar.', 'warning');
+        return false;
+    }
     if (product.estoque < 1) {
         showToast('Produto sem estoque!', 'error');
         return false;

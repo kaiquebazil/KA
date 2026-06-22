@@ -23,7 +23,9 @@
         settings: { collection: 'configuracoes', localKey: 'kaos_settings', docId: 'kos' },
         shipping: { collection: 'configuracoes', localKey: 'katech_shipping', docId: 'frete' },
         orders: { collection: 'pedidos', localKey: 'katech_orders' },
-        deliveries: { collection: 'entregas', localKey: 'kaos_deliveries' }
+        deliveries: { collection: 'entregas', localKey: 'kaos_deliveries' },
+        trainings: { collection: 'treinamentos', localKey: 'kaos_trainings' },
+        trainingProgress: { collection: 'progressoTreinamentos', localKey: 'kaos_training_progress' }
     };
 
     function hasConfig() {
@@ -186,7 +188,9 @@
             settings: data.settings,
             shipping: data.shipping,
             orders: data.orders,
-            deliveries: data.deliveries || data.entregas
+            deliveries: data.deliveries || data.entregas,
+            trainings: data.trainings || data.treinamentos,
+            trainingProgress: data.trainingProgress || data.progressoTreinamentos
         };
         var keys = Object.keys(pairs);
         for (var i = 0; i < keys.length; i++) {

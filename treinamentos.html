@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Acompanhe Pedido, OS e Garantia | KB Tech Petrópolis</title>
-    <meta name="description" content="Consulte pedido, ordem de serviço ou garantia da KB Tech em Petrópolis usando o número informado no atendimento.">
-    <meta name="keywords" content="consultar OS KB Tech, consultar garantia KB Tech, acompanhar pedido KB Tech, assistência técnica Petrópolis">
-    <link rel="canonical" href="https://kaiquebazil.github.io/Loja/consulta.html">
+    <title>Universidade KB Tech | Treinamentos Internos</title>
+    <meta name="description" content="Treinamentos internos da KB Tech para padronizar atendimento, KOS, produtos, fornecedores, entregas, manutenção, financeiro e documentos.">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +16,7 @@
         <div class="container">
             <span><i class="fas fa-map-marker-alt"></i> Petrópolis - RJ</span>
             <span><i class="fab fa-whatsapp"></i> (24) 99204-6467</span>
-            <span><i class="fas fa-tools"></i> Tecnologia, manutenção e infraestrutura</span>
+            <span><i class="fas fa-graduation-cap"></i> Universidade KB Tech</span>
         </div>
     </div>
 
@@ -57,7 +56,8 @@
             <li><a href="index.html#services-section"><i class="fas fa-tools"></i> Serviços</a></li>
             <li><a href="orcamento.html"><i class="fas fa-file-alt"></i> Orçamento</a></li>
             <li><a href="index.html#products-section"><i class="fas fa-box"></i> Produtos</a></li>
-            <li><a href="consulta.html" class="active"><i class="fas fa-search"></i> Acompanhar Pedido/OS/Garantia</a></li>
+            <li><a href="consulta.html"><i class="fas fa-search"></i> Acompanhar Pedido/OS/Garantia</a></li>
+            <li><a href="treinamentos.html" class="active"><i class="fas fa-graduation-cap"></i> Treinamentos</a></li>
         </ul>
         <div class="nav-mobile-cta">
             <a href="orcamento.html" class="nav-cta-primary"><i class="fas fa-file-alt"></i> Solicitar Orçamento</a>
@@ -65,33 +65,83 @@
         </div>
     </nav>
 
-    <main class="page-main">
-        <div class="page-header">
-            <h1><i class="fas fa-search"></i> Acompanhe seu <span class="highlight">atendimento</span></h1>
-            <p>Consulte pedido, OS ou garantia usando o número informado pela KB Tech.</p>
+    <main class="page-main training-page">
+        <div class="page-header training-page-header">
+            <span class="hero-badge">Treinamentos KB Tech</span>
+            <h1><i class="fas fa-graduation-cap"></i> Universidade <span class="highlight">KB Tech</span></h1>
+            <p>Treinamentos rápidos para manter o padrão de atendimento, organização e qualidade da KB Tech.</p>
         </div>
 
-        <div class="consulta-layout">
-            <div class="consulta-card">
-                <div class="consulta-tabs" role="tablist" aria-label="Tipo de consulta">
-                    <button class="consulta-tab active" type="button" data-consulta="pedido">Pedido</button>
-                    <button class="consulta-tab" type="button" data-consulta="os">Ordem de Serviço</button>
-                    <button class="consulta-tab" type="button" data-consulta="garantia">Garantia</button>
+        <section class="training-shell" aria-label="Universidade KB Tech">
+            <div class="training-hero-panel">
+                <div>
+                    <h2>Soluções completas só funcionam com processo claro.</h2>
+                    <p>Use esta área para treinar associados, parceiros, técnicos, entregadores, fornecedores e pessoas de confiança sem depender apenas da memória do dia a dia.</p>
                 </div>
-
-                <form id="consulta-form">
-                    <div class="form-group">
-                        <label for="consulta-numero">Número para consulta</label>
-                        <input type="text" id="consulta-numero" required placeholder="Ex: 1001">
-                    </div>
-                    <button type="submit" class="btn-primary">
-                        <i class="fas fa-search"></i> Consultar
-                    </button>
-                </form>
-
-                <div class="consulta-result" id="consulta-result"></div>
+                <div class="training-metrics">
+                    <div><strong id="training-stat-modules">0</strong><span>Módulos</span></div>
+                    <div><strong id="training-stat-lessons">0</strong><span>Aulas ativas</span></div>
+                    <div><strong id="training-stat-required">0</strong><span>Obrigatórias</span></div>
+                    <div><strong id="training-stat-progress">0%</strong><span>Progresso</span></div>
+                </div>
+                <div class="training-progress-track" aria-label="Progresso concluído">
+                    <span id="training-progress-bar"></span>
+                </div>
             </div>
-        </div>
+
+            <div class="training-filters">
+                <div class="training-search-field">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="training-search" placeholder="Buscar aula, módulo ou processo...">
+                </div>
+                <select id="training-category-filter" aria-label="Filtrar por categoria">
+                    <option value="">Todas as categorias</option>
+                </select>
+                <select id="training-audience-filter" aria-label="Filtrar por público-alvo">
+                    <option value="">Todos os públicos</option>
+                </select>
+                <button type="button" id="training-clear-filters" class="btn-secondary">
+                    <i class="fas fa-eraser"></i> Limpar
+                </button>
+            </div>
+
+            <div class="section-header-left training-section-title">
+                <h2>Módulos do curso</h2>
+                <p>Clique em um módulo para filtrar as aulas.</p>
+            </div>
+            <div class="training-module-grid" id="training-module-grid"></div>
+
+            <div class="training-layout">
+                <aside class="training-list-panel">
+                    <div class="training-list-header">
+                        <h2>Lista de vídeos</h2>
+                        <span><strong id="training-visible-count">0</strong> aulas</span>
+                    </div>
+                    <div class="training-list" id="training-list"></div>
+                </aside>
+
+                <section class="training-player-panel" id="training-player" aria-live="polite">
+                    <div class="training-placeholder">
+                        <i class="fas fa-video"></i>
+                        <strong>Carregando aulas...</strong>
+                        <p>Os treinamentos serão exibidos aqui.</p>
+                    </div>
+                </section>
+            </div>
+
+            <section class="training-checklist-section">
+                <div class="section-header">
+                    <h2>Checklist de <span class="highlight">operação</span></h2>
+                    <p>Itens que ajudam a manter atendimento, KOS, financeiro e garantia sempre organizados.</p>
+                </div>
+                <ul class="training-checklist" id="training-checklist"></ul>
+            </section>
+
+            <div class="training-note">
+                <i class="fas fa-lock"></i>
+                <p>Se o Firebase Auth estiver ativo, o progresso pode ser vinculado ao usuário autorizado. Sem login, o progresso fica salvo neste navegador via localStorage.</p>
+            </div>
+        </section>
     </main>
 
     <footer class="footer">
@@ -99,8 +149,8 @@
             <div class="footer-content">
                 <div class="footer-logo">
                     <img src="img/logo-transparente.png" alt="KB Tech" width="140" onerror="this.style.display='none'">
-                    <p>Soluções em tecnologia, manutenção e infraestrutura.</p>
-                    <p class="footer-tagline">Acompanhamento pelo site e atendimento pelo WhatsApp</p>
+                    <p>Soluções completas em tecnologia, manutenção e infraestrutura em Petrópolis.</p>
+                    <p class="footer-tagline">Padrão interno, treinamento e atendimento pelo WhatsApp</p>
                 </div>
                 <div class="footer-links">
                     <h4>Navegação</h4>
@@ -111,7 +161,6 @@
                         <li><a href="orcamento.html">Orçamento</a></li>
                         <li><a href="consulta.html">Acompanhar Pedido/OS/Garantia</a></li>
                         <li><a href="treinamentos.html">Treinamentos KB Tech</a></li>
-                        <li><a href="https://wa.me/5524992046467?text=Ol%C3%A1%2C%20gostaria%20de%20um%20or%C3%A7amento%20com%20a%20KB%20Tech." target="_blank" rel="noopener">WhatsApp</a></li>
                     </ul>
                 </div>
                 <div class="footer-contact">
@@ -138,10 +187,11 @@
     </a>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
     <script src="js/firebase-config.js?v=20260608-unified"></script>
-    <script src="js/firebase-consulta.js?v=20260608-unified"></script>
     <script src="js/menu.js?v=20260609-mobile-menu"></script>
-    <script src="js/consulta.js?v=20260608-unified"></script>
+    <script src="js/treinamentos-data.js"></script>
+    <script src="js/treinamentos.js"></script>
 </body>
 </html>

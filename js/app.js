@@ -25,7 +25,13 @@ var categoryIcons = {
     'Casa': 'fa-home', 'Beleza': 'fa-spa', 'Saúde': 'fa-heartbeat',
     'Elétrica': 'fa-bolt', 'Ferramentas': 'fa-tools', 'Fotografia': 'fa-camera-retro',
     'Projetores': 'fa-film', 'Redes': 'fa-wifi', 'Controles': 'fa-gamepad',
-    'Drones': 'fa-paper-plane', 'Baterias': 'fa-battery-full'
+    'Drones': 'fa-paper-plane', 'Baterias': 'fa-battery-full',
+    'Celulares': 'fa-mobile-alt', 'Tablets': 'fa-tablet-alt', 'Smart Home': 'fa-house-signal',
+    'Streaming': 'fa-tv', 'SSD e Armazenamento': 'fa-hard-drive', 'Pendrives': 'fa-usb',
+    'CartÃµes de MemÃ³ria': 'fa-sd-card', 'HD Externo': 'fa-database', 'Mouses': 'fa-computer-mouse',
+    'RÃ¡dio Comunicador': 'fa-walkie-talkie', 'AcessÃ³rios de Tecnologia': 'fa-keyboard',
+    'Cartoes de Memoria': 'fa-sd-card', 'Radio Comunicador': 'fa-walkie-talkie',
+    'Acessorios de Tecnologia': 'fa-keyboard'
 };
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -204,31 +210,39 @@ function createProductCard(p) {
     if (p.oferta) tags += '<span class="tag oferta">Oferta</span>';
     if (p.desconto > 0) tags += '<span class="tag desconto">-' + p.desconto + '%</span>';
 
-    var estoque = p.estoque > 0
-        ? '<span class="product-stock">Em estoque: ' + p.estoque + ' un.</span>'
-        : '<span class="product-stock out">Sem estoque</span>';
+    var sobConsulta = typeof isConsultProduct === 'function' && isConsultProduct(p);
+    var estoque = sobConsulta
+        ? '<span class="product-stock consult"><i class="fas fa-info-circle"></i> Disponibilidade sob consulta</span>'
+        : p.estoque > 0
+        ? ''
+        : '<span class="product-stock out">Indisponivel no momento</span>';
 
-    var imgSrc = p.imagem || 'https://placehold.co/400x400/11141b/ffffff?text=Produto';
-    var waMsg = 'Ola KB Tech! Tenho interesse no produto: ' + p.nome + ' (R$ ' + precoFinal.toFixed(2).replace('.', ',') + '). Poderia me dar mais informacoes?';
+    var imgSrc = p.imagem || 'img/produto-placeholder.svg';
+    var priceText = precoFinal.toFixed(2).replace('.', ',');
+    var waMsg = sobConsulta
+        ? 'Ola, KB Tech!\n\nGostaria de consultar disponibilidade deste produto:\n\nProduto: ' + p.nome + '\nMarca: ' + (p.marca || '-') + '\nModelo: ' + (p.modelo || '-') + '\nValor anunciado: R$ ' + priceText + '\n\nPode confirmar disponibilidade e prazo?'
+        : 'Ola KB Tech! Tenho interesse no produto: ' + p.nome + ' (R$ ' + priceText + '). Poderia me dar mais informacoes?';
     var meta = [p.marca, p.modelo].filter(Boolean).join(' ');
     var alt = p.alt || (p.nome + ' vendido pela KB Tech em Petropolis');
     var waUrl = 'https://wa.me/5524992046467?text=' + encodeURIComponent(waMsg);
 
     var productArg = JSON.stringify(p.id);
-    var addBtn = p.estoque > 0
+    var addBtn = sobConsulta
+        ? '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-add-cart btn-consult-whatsapp"><i class="fab fa-whatsapp"></i> Consultar disponibilidade</a>'
+        : p.estoque > 0
         ? '<button class="btn-add-cart" onclick="addToCart(' + productArg + ')"><i class="fas fa-cart-plus"></i> Adicionar ao Carrinho</button>'
-        : '<button class="btn-add-cart" disabled style="opacity:0.5;cursor:not-allowed;"><i class="fas fa-ban"></i> Sem Estoque</button>';
+        : '<button class="btn-add-cart" disabled style="opacity:0.5;cursor:not-allowed;"><i class="fas fa-ban"></i> Indisponivel</button>';
 
     card.innerHTML =
         tags +
-        '<div class="product-img"><img src="' + imgSrc + '" alt="' + alt + '" loading="lazy" onerror="this.src=\'https://placehold.co/400x400/11141b/ffffff?text=Produto\'"></div>' +
+        '<div class="product-img"><img src="' + imgSrc + '" alt="' + alt + '" loading="lazy" onerror="this.src=\'img/produto-placeholder.svg\'"></div>' +
         '<span class="product-category">' + p.categoria + '</span>' +
         '<h3 class="product-title">' + p.nome + '</h3>' +
         (meta ? '<p class="product-meta">' + meta + '</p>' : '') +
         '<div class="product-price"><span class="price">R$ ' + precoFinal.toFixed(2).replace('.', ',') + '</span>' + precoOriginal + '</div>' +
         estoque +
         '<div class="product-actions">' + addBtn +
-        '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-buy-whatsapp"><i class="fab fa-whatsapp"></i> Comprar pelo WhatsApp</a>' +
+        (sobConsulta ? '' : '<a href="' + waUrl + '" target="_blank" rel="noopener" class="btn-buy-whatsapp"><i class="fab fa-whatsapp"></i> Comprar pelo WhatsApp</a>') +
         '</div>';
 
     return card;
@@ -310,6 +324,7 @@ function renderReviews() {
 
 // ── Menu Mobile ───────────────────────────────────────────────
 function initMobileMenu() {
+    if (window.KBTechMenuInitialized) return;
     var menuToggle = document.getElementById('menu-toggle');
     var navMenu = document.getElementById('nav-menu');
     var closeMenuBtn = document.getElementById('close-menu');

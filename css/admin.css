@@ -643,6 +643,187 @@
 .btn-secondary-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 8px 15px; border-radius: 6px; cursor: pointer; }
 .btn-secondary-outline:hover { border-color: var(--primary-blue); color: var(--primary-blue); }
 
+/* Módulo Treinamentos */
+.training-admin-actions,
+.training-form-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.training-admin-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.85fr) minmax(360px, 1.15fr);
+    gap: 18px;
+    align-items: start;
+    margin: 20px 0;
+}
+.training-admin-form,
+.training-admin-preview {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.training-admin-form { padding: 20px; }
+.training-admin-form h3 {
+    color: var(--primary-blue);
+    font-size: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.training-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 4px 0 18px;
+}
+.training-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+.training-admin-preview .training-placeholder {
+    min-height: 300px;
+    border-radius: 0;
+}
+.training-admin-preview-info {
+    padding: 18px;
+    border-top: 1px solid var(--border-color);
+}
+.training-admin-preview-info span {
+    color: var(--primary-blue);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.training-admin-preview-info h3 { font-size: 18px; margin: 6px 0; }
+.training-admin-preview-info p { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.training-admin-preview-info small { display: block; color: var(--text-muted); margin-top: 10px; }
+.training-admin-toolbar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) minmax(180px, 220px) auto;
+    gap: 10px;
+    margin: 18px 0;
+}
+.training-admin-toolbar input,
+.training-admin-toolbar select {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 12px;
+    border-radius: 8px;
+    outline: none;
+}
+.training-admin-toolbar input:focus,
+.training-admin-toolbar select:focus { border-color: var(--primary-blue); }
+.training-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 800;
+}
+.training-badge.required { color: var(--warning); border-color: rgba(245,166,35,0.38); }
+.training-badge.active,
+.training-badge.video { color: var(--success); border-color: rgba(37,211,102,0.38); }
+.training-badge.inactive { color: var(--text-muted); }
+.training-row-inactive td { opacity: 0.72; }
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+.btn-icon:hover {
+    color: #fff;
+    border-color: var(--primary-blue);
+    background: var(--primary-blue);
+}
+.btn-icon.danger:hover {
+    border-color: var(--red-danger);
+    background: var(--red-danger);
+}
+
+/* Importador de produtos */
+.product-import-panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin: 16px 0;
+    overflow: hidden;
+}
+.product-import-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.product-import-header h3 {
+    color: var(--primary-blue);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.product-import-header p,
+.product-import-help {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+.product-import-body {
+    padding: 18px;
+}
+.product-import-body textarea {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+}
+.product-import-body textarea:focus {
+    border-color: var(--primary-blue);
+}
+.product-import-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 12px 0;
+}
+.product-import-preview {
+    margin-top: 14px;
+}
+
 /* ── Estilos de Impressão (NF e OS) ─────────────────────────── */
 .print-paper {
     background: #fff;
@@ -699,6 +880,9 @@
     .admin-table-wrapper { overflow-x: auto; }
     .admin-table { font-size: 13px; }
     .admin-table th, .admin-table td { padding: 12px 8px; }
+    .training-admin-grid,
+    .training-admin-toolbar { grid-template-columns: 1fr; }
+    .product-import-header { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 768px) {
@@ -917,4 +1101,15 @@
     .total-box .grand-total { font-size: 16px; }
     .signature-area { grid-template-columns: 1fr; gap: 16px; margin-top: 30px; }
     .sig-line { font-size: 10px; padding-top: 4px; }
+}
+
+@media (max-width: 768px) {
+    #tab-trainings .admin-table th:nth-child(2),
+    #tab-trainings .admin-table td:nth-child(2) {
+        display: table-cell;
+        min-width: 220px;
+    }
+    #tab-trainings .action-buttons {
+        min-width: 150px;
+    }
 }

@@ -209,6 +209,8 @@ function initAdminPanel() {
     ensureSupplierModules();
     ensureDashboardSupplyStats();
     ensureProductSupplyFields();
+    if (typeof ensureProductImporter === 'function') ensureProductImporter();
+    if (typeof ensureTrainingModule === 'function') ensureTrainingModule();
     seedInitialKosProducts();
     initAdminTabs();
     renderDashboard();
@@ -224,6 +226,7 @@ function initAdminPanel() {
     renderDocuments();
     renderOfficialNotes();
     renderMeiControl();
+    if (typeof renderTrainings === 'function') renderTrainings();
     renderAdminShipping();
     renderAdminOrders();
     if (typeof renderDeliveries === 'function') renderDeliveries();
@@ -245,6 +248,8 @@ function initAdminPanel() {
     initFinanceFilters();
     initFiscalActions();
     initSupplierActions();
+    if (typeof initProductImporter === 'function') initProductImporter();
+    if (typeof initTrainingModule === 'function') initTrainingModule();
 
     var searchInput = document.getElementById('admin-search');
     if (searchInput) {
@@ -326,6 +331,7 @@ function initAdminTabs() {
             if (tabId === 'supplier-purchases') renderSupplierPurchases();
             if (tabId === 'partners') renderPartners();
             if (tabId === 'documents') renderDocuments();
+            if (tabId === 'trainings' && typeof renderTrainings === 'function') renderTrainings();
             if (tabId === 'shipping') renderAdminShipping();
             if (tabId === 'orders') loadOrdersFromFirebase().then(renderAdminOrders);
             if (tabId === 'deliveries' && typeof loadDeliveriesFromFirebase === 'function' && typeof renderDeliveries === 'function') loadDeliveriesFromFirebase().then(renderDeliveries);
@@ -925,7 +931,7 @@ function renderAdminProducts(filter) {
     for (var i = 0; i < products.length; i++) {
         if (products[i].ativo !== false && products[i].destaque) destaqueCount++;
         if (products[i].ativo !== false && products[i].oferta) ofertaCount++;
-        if (!KOS_DROPSHIP_MODE && products[i].ativo !== false && products[i].estoque <= 0) zeradoCount++;
+        if (!KOS_DROPSHIP_MODE && !(typeof isConsultProduct === 'function' && isConsultProduct(products[i])) && products[i].ativo !== false && products[i].estoque <= 0) zeradoCount++;
     }
     if (statDestaque) statDestaque.textContent = destaqueCount;
     if (statOferta) statOferta.textContent = ofertaCount;
@@ -940,16 +946,17 @@ function renderAdminProducts(filter) {
         if (p.oferta) flags += '<span class="flag-badge flag-oferta">Oferta</span>';
         if (p.maisVendido) flags += '<span class="flag-badge flag-mais-vendido">+Vendido</span>';
 
+        var consultProduct = typeof isConsultProduct === 'function' && isConsultProduct(p);
         var stockClass = '';
-        if (!isDropshipProduct(p) && p.estoque <= 0) stockClass = 'stock-zero';
-        else if (!isDropshipProduct(p) && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5)) stockClass = 'stock-low';
+        if (!consultProduct && !isDropshipProduct(p) && p.estoque <= 0) stockClass = 'stock-zero';
+        else if (!consultProduct && !isDropshipProduct(p) && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5)) stockClass = 'stock-low';
         
         var precoVenda = parseFloat(p.precoVenda !== undefined ? p.precoVenda : p.preco) || 0;
         var precoCusto = parseFloat(p.precoCusto !== undefined ? p.precoCusto : p.custo) || 0;
         var lucro = precoVenda - precoCusto;
         var margem = precoVenda > 0 ? ((lucro / precoVenda) * 100).toFixed(1) : 0;
         var lucroClass = lucro < 0 ? 'lucro-negativo' : '';
-        var stockLabel = isDropshipProduct(p) ? 'Dropship' : (p.estoque <= 0 ? p.estoque + ' - zerado' : (p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5) ? p.estoque + ' - baixo' : p.estoque));
+        var stockLabel = consultProduct ? (p.statusDisponibilidade || 'Consultar disponibilidade') : (isDropshipProduct(p) ? 'Dropship' : (p.estoque <= 0 ? p.estoque + ' - zerado' : (p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5) ? p.estoque + ' - baixo' : p.estoque)));
         var toggleIcon = p.ativo === false ? 'fa-toggle-on' : 'fa-toggle-off';
         var toggleTitle = p.ativo === false ? 'Reativar produto' : 'Inativar produto';
         var supplierName = p.fornecedorPrincipalNome || p.fornecedor || (isControlProduct(p) ? 'Exceção: controles' : 'Sem fornecedor');
@@ -1123,7 +1130,7 @@ var SUPPLIERS_KEY = 'kaos_suppliers';
 var SUPPLIER_PURCHASES_KEY = 'kaos_supplier_purchases';
 var KOS_DROPSHIP_MODE = false;
 var SUPPLIER_PURCHASE_STATUS = ['Orçamento solicitado', 'Pedido enviado', 'Aguardando pagamento', 'Aguardando entrega', 'Recebido', 'Cancelado'];
-var KOS_PRODUCT_CATEGORIES = ['Controles Remotos', 'Carregadores', 'Cabos', 'Adaptadores', 'Acessorios para TV', 'Acessorios para Celular', 'Perifericos', 'Mouse', 'Teclado', 'Headset', 'Informatica', 'Audio', 'TV e Streaming', 'Redes', 'Outro'];
+var KOS_PRODUCT_CATEGORIES = ['Celulares', 'Tablets', 'Smart Home', 'Streaming', 'SSD e Armazenamento', 'Pendrives', 'Cartoes de Memoria', 'HD Externo', 'Mouses', 'Radio Comunicador', 'Acessorios de Tecnologia', 'Controles Remotos', 'Carregadores', 'Cabos', 'Adaptadores', 'Acessorios para TV', 'Acessorios para Celular', 'Perifericos', 'Mouse', 'Teclado', 'Headset', 'Informatica', 'Audio', 'TV e Streaming', 'Redes', 'Outro'];
 var KOS_DEFAULT_SUPPLIER = {
     id: 'tecnocell',
     nome: 'Tecnocell',
@@ -1307,8 +1314,17 @@ function ensureProductSupplyFields() {
         '</div>' +
         '<div class="form-row">' +
         '<div class="form-group"><label for="prod-custo-fornecedor">Custo Fornecedor</label><input type="number" id="prod-custo-fornecedor" min="0" step="0.01"></div>' +
+        '<div class="form-group"><label for="prod-preco-fornecedor">PreÃ§o Base/Fornecedor</label><input type="number" id="prod-preco-fornecedor" min="0" step="0.01"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label for="prod-margem">Margem (%)</label><input type="number" id="prod-margem" min="0" step="0.1"></div>' +
         '<div class="form-group"><label for="prod-prazo-reposicao">Prazo Reposicao</label><input type="text" id="prod-prazo-reposicao" placeholder="Ex: 3 a 5 dias"></div>' +
         '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label for="prod-tipo-estoque">Tipo de Estoque</label><select id="prod-tipo-estoque"><option value="estoque proprio">Estoque proprio</option><option value="fornecedor local">Fornecedor local</option></select></div>' +
+        '<div class="form-group"><label for="prod-status-disponibilidade">Disponibilidade</label><select id="prod-status-disponibilidade"><option value="">Em estoque</option><option value="Consultar disponibilidade">Consultar disponibilidade</option><option value="Disponibilidade sob consulta">Disponibilidade sob consulta</option><option value="Indisponivel no momento">Indisponivel no momento</option></select></div>' +
+        '</div>' +
+        '<div class="form-group"><label for="prod-especificacao">EspecificaÃ§Ã£o</label><textarea id="prod-especificacao" rows="2" placeholder="Capacidade, cor, armazenamento, conectividade..."></textarea></div>' +
         '<div class="form-row">' +
         '<div class="form-group"><label for="prod-preco-ref-min">Referencia Min.</label><input type="number" id="prod-preco-ref-min" min="0" step="0.01"></div>' +
         '<div class="form-group"><label for="prod-preco-ref-max">Referencia Max.</label><input type="number" id="prod-preco-ref-max" min="0" step="0.01"></div>' +
@@ -1361,15 +1377,19 @@ function readProductSupplyFields() {
         codigoFornecedor: getFieldValue('prod-codigo-fornecedor'),
         linkFornecedor: getFieldValue('prod-link-fornecedor'),
         custoFornecedor: parseFloat(getFieldValue('prod-custo-fornecedor')) || 0,
+        precoFornecedor: parseFloat(getFieldValue('prod-preco-fornecedor')) || parseFloat(getFieldValue('prod-custo-fornecedor')) || precoCusto,
+        margem: parseFloat(getFieldValue('prod-margem')) || margem,
         prazoReposicao: getFieldValue('prod-prazo-reposicao'),
+        tipoEstoque: getFieldValue('prod-tipo-estoque') || 'estoque proprio',
+        statusDisponibilidade: getFieldValue('prod-status-disponibilidade'),
+        especificacao: getFieldValue('prod-especificacao'),
         precoReferenciaMin: parseFloat(getFieldValue('prod-preco-ref-min')) || 0,
         precoReferenciaMax: parseFloat(getFieldValue('prod-preco-ref-max')) || 0,
         imagensExtras: [],
         alt: nome ? nome + ' vendido pela KB Tech em Petropolis' : '',
         observacoes: getFieldValue('prod-descricao'),
         observacoesFornecedor: getFieldValue('prod-observacoes-fornecedor'),
-        lucro: lucro,
-        margem: margem
+        lucro: lucro
     };
 }
 
@@ -1383,7 +1403,12 @@ function fillProductSupplyFields(p) {
     setFieldValue('prod-codigo-fornecedor', p.codigoFornecedor || '');
     setFieldValue('prod-link-fornecedor', p.linkFornecedor || '');
     setFieldValue('prod-custo-fornecedor', p.custoFornecedor || '');
+    setFieldValue('prod-preco-fornecedor', p.precoFornecedor || p.custoFornecedor || p.precoCusto || '');
+    setFieldValue('prod-margem', p.margem || '');
     setFieldValue('prod-prazo-reposicao', p.prazoReposicao || '');
+    setFieldValue('prod-tipo-estoque', p.tipoEstoque || (p.dropshipping ? 'fornecedor local' : 'estoque proprio'));
+    setFieldValue('prod-status-disponibilidade', p.statusDisponibilidade || '');
+    setFieldValue('prod-especificacao', p.especificacao || '');
     setFieldValue('prod-preco-ref-min', p.precoReferenciaMin || '');
     setFieldValue('prod-preco-ref-max', p.precoReferenciaMax || '');
     setFieldValue('prod-observacoes-fornecedor', p.observacoesFornecedor || '');
@@ -2824,6 +2849,8 @@ function initBackupSystem() {
                 settings: getCompanyConfig(),
                 shipping: getShipping(), 
                 orders: JSON.parse(localStorage.getItem('katech_orders') || '[]'), 
+                trainings: typeof getTrainings === 'function' ? getTrainings(false) : JSON.parse(localStorage.getItem('kaos_trainings') || '[]'),
+                trainingProgress: JSON.parse(localStorage.getItem('kaos_training_progress') || '[]'),
                 timestamp: new Date().toISOString() 
             };
             var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2859,6 +2886,8 @@ function initBackupSystem() {
                         if (data.settings) saveCompanyConfig(data.settings);
                         if (data.shipping) saveShipping(data.shipping);
                         if (data.orders) localStorage.setItem('katech_orders', JSON.stringify(data.orders));
+                        if ((data.trainings || data.treinamentos) && typeof saveTrainings === 'function') saveTrainings(data.trainings || data.treinamentos);
+                        if (data.trainingProgress || data.progressoTreinamentos) localStorage.setItem('kaos_training_progress', JSON.stringify(data.trainingProgress || data.progressoTreinamentos));
                         if (window.KOSData) window.KOSData.importBackup(data);
                         showAdminToast('Backup restaurado! Reiniciando...');
                         setTimeout(function() { location.reload(); }, 1500);
@@ -3659,10 +3688,10 @@ function renderDashboard() {
     var receitasMes = finance.filter(function(f) { return f.tipo === 'Receita' && isInCurrentMonth(f.data); }).reduce(function(a, f) { return a + (parseFloat(f.valor) || 0); }, 0);
     var despesasMes = finance.filter(function(f) { return f.tipo !== 'Receita' && isInCurrentMonth(f.data); }).reduce(function(a, f) { return a + (parseFloat(f.valor) || 0); }, 0);
     var osAbertas = os.filter(function(o) { return o.status === 'Aberto' || o.status === 'Em Análise' || o.status === 'Aguardando Peça'; }).length;
-    var estoqueBaixo = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.estoque <= (p.estoqueMin || p.estoqueMinimo || 5); }).length;
-    var semEstoque = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= 0; }).length;
+    var estoqueBaixo = products.filter(function(p) { return !(typeof isConsultProduct === 'function' && isConsultProduct(p)) && !KOS_DROPSHIP_MODE && p.estoque <= (p.estoqueMin || p.estoqueMinimo || 5); }).length;
+    var semEstoque = products.filter(function(p) { return !(typeof isConsultProduct === 'function' && isConsultProduct(p)) && !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= 0; }).length;
     var semFornecedor = products.filter(function(p) { return p.ativo !== false && !isControlProduct(p) && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); }).length;
-    var aguardandoReposicao = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= (parseInt(p.estoqueMinimo || p.estoqueMin) || 1); }).length;
+    var aguardandoReposicao = products.filter(function(p) { return !(typeof isConsultProduct === 'function' && isConsultProduct(p)) && !KOS_DROPSHIP_MODE && p.ativo !== false && (parseInt(p.estoque) || 0) <= (parseInt(p.estoqueMinimo || p.estoqueMin) || 1); }).length;
     var comprasPendentes = purchases.filter(function(c) { return c.status !== 'Recebido' && c.status !== 'Cancelado'; }).length;
     var invested = getInventoryInvestment();
     var revenueItems = finance.filter(function(f) { return f.tipo === 'Receita' && isInCurrentMonth(f.data); });
@@ -3698,8 +3727,8 @@ function renderDashboard() {
 
     var alerts = document.getElementById('dash-notifications');
     if (alerts) {
-        var low = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque > 0 && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5); });
-        var zero = products.filter(function(p) { return !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque <= 0; });
+        var low = products.filter(function(p) { return !(typeof isConsultProduct === 'function' && isConsultProduct(p)) && !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque > 0 && p.estoque <= (p.estoqueMinimo || p.estoqueMin || 5); });
+        var zero = products.filter(function(p) { return !(typeof isConsultProduct === 'function' && isConsultProduct(p)) && !KOS_DROPSHIP_MODE && p.ativo !== false && p.estoque <= 0; });
         var noSupplier = products.filter(function(p) { return p.ativo !== false && !isControlProduct(p) && !(p.fornecedorPrincipalId || p.fornecedorPrincipalNome || p.fornecedor); });
         var html = '';
         if (zero.length) html += '<div class="admin-alert alert-danger"><strong>Estoque zerado:</strong> ' + zero.map(function(p) { return p.nome; }).slice(0, 5).join(', ') + (zero.length > 5 ? '...' : '') + '<br>' + zero.slice(0, 3).map(function(p) { return '<button class="btn-secondary" onclick="requestSupplierOrder(' + p.id + ')">Pedir reposicao</button>'; }).join(' ') + '</div>';
